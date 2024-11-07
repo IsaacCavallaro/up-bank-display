@@ -26,10 +26,12 @@ ACCOUNT_IDS = {
     "RENT": os.getenv("RENT"),
 }
 
-if not ACCESS_TOKEN:
-    raise ValueError(
-        "Please set the UP_API_TOKEN environment variable in your .env file."
-    )
+
+def check_access_token():
+    if not os.getenv("UP_API_TOKEN"):
+        raise ValueError(
+            "Please set the UP_API_TOKEN environment variable in your .env file."
+        )
 
 
 def fetch_transactions(account_id, since, until):
@@ -64,26 +66,33 @@ def process_transaction_data(transaction_data):
                 ["attributes", "description"],
                 ["attributes", "amount", "value"],
                 ["attributes", "settledAt"],
+                ["attributes", "createdAt"],
             ],
         )
 
-        if "attributes_description" in df.columns:
-            df.rename(columns={"attributes_description": "Description"}, inplace=True)
-        else:
-            df["Description"] = None
+        df.rename(
+            columns={
+                "attributes_description": "Description",
+                "attributes_amount_value": "Amount",
+                "attributes_settledAt": "Settled At",
+                "attributes_createdAt": "Created At",
+            },
+            inplace=True,
+        )
 
-        if "attributes_amount_value" in df.columns:
-            df.rename(columns={"attributes_amount_value": "Amount"}, inplace=True)
-            df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce").fillna(
-                0
-            )  # Handle non-numeric gracefully
-        else:
-            df["Amount"] = 0.0
+        df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce").fillna(0)
+        df["Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
+        df["Created At"] = pd.to_datetime(df["Created At"], errors="coerce", utc=True)
 
-        if "attributes_settledAt" in df.columns:
-            df.rename(columns={"attributes_settledAt": "Settled At"}, inplace=True)
-        else:
-            df["Settled At"] = None
+        df.dropna(subset=["Created At"], inplace=True)
+
+        df["Description"] = df["Description"].fillna("Unknown")
+        df["Description_Date"] = (
+            df["Description"].astype(str)
+            + " ("
+            + df["Created At"].dt.strftime("%Y-%m-%d")
+            + ")"
+        )
 
         return df
     else:
@@ -92,10 +101,11 @@ def process_transaction_data(transaction_data):
 
 
 def plot_bar(df):
-    """Generate a bar plot for Description vs Amount."""
-    plt.bar(df["Description"], df["Amount"])
-    plt.title("Transaction Description vs Amount")
-    plt.xlabel("Description")
+    """Generate a bar plot for Description_Date vs Amount."""
+    plt.figure(figsize=(10, 6))
+    plt.bar(df["Description_Date"], df["Amount"], color="skyblue")
+    plt.title("Transaction Description and Creation Date vs Amount")
+    plt.xlabel("Description (Creation Date)")
     plt.ylabel("Amount (AUD)")
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
@@ -103,30 +113,96 @@ def plot_bar(df):
 
     fig = px.bar(
         df,
-        x="Description",
+        x="Description_Date",
         y="Amount",
-        title="Transaction Description vs Amount",
+        title="Transaction Description and Creation Date vs Amount",
+        labels={
+            "Description_Date": "Description (Creation Date)",
+            "Amount": "Amount (AUD)",
+        },
     )
+    fig.update_layout(xaxis_tickangle=-45)
     fig.show()
 
 
 def plot_line(df):
-    """Generate a line plot for Amount over Time."""
-    plt.plot(df["Settled At"], df["Amount"], marker="o")
-    plt.title("Amount Over Time")
-    plt.xlabel("Date")
+    """Generate a line plot for Description_Date vs Amount."""
+    plt.figure(figsize=(10, 6))
+    plt.plot(df["Description_Date"], df["Amount"], marker="o", color="skyblue")
+    plt.title("Amount vs Description Date")
+    plt.xlabel("Description (Creation Date)")
     plt.ylabel("Amount (AUD)")
-    plt.xticks(rotation=45)
+    plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
     plt.show()
 
-    fig = px.line(df, x="Settled At", y="Amount", title="Amount Over Time")
+    fig = px.line(
+        df,
+        x="Description_Date",
+        y="Amount",
+        title="Amount vs Description Date",
+        labels={
+            "Description_Date": "Description (Creation Date)",
+            "Amount": "Amount (AUD)",
+        },
+    )
+    fig.update_layout(xaxis_tickangle=-45)
     fig.show()
 
 
 def plot_scatter(df):
-    """Generate a scatter plot for Description vs Amount."""
-    fig = px.scatter(df, x="Description", y="Amount", title="Transaction Scatter Plot")
+    """Generate a scatter plot for Description_Date vs Amount."""
+    plt.figure(figsize=(10, 6))
+    plt.scatter(df["Description_Date"], df["Amount"], color="skyblue")
+    plt.title("Transaction Scatter Plot")
+    plt.xlabel("Description (Creation Date)")
+    plt.ylabel("Amount (AUD)")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    plt.show()
+
+    fig = px.scatter(
+        df,
+        x="Description_Date",
+        y="Amount",
+        title="Transaction Scatter Plot",
+        labels={
+            "Description_Date": "Description (Creation Date)",
+            "Amount": "Amount (AUD)",
+        },
+    )
+    fig.update_layout(xaxis_tickangle=-45)
+    fig.show()
+
+
+def plot_pie(df):
+    """Generate a pie chart for Description and Amount."""
+    df_filtered = df[df["Amount"] > 0]
+
+    if df_filtered.empty:
+        print("No positive transaction amounts to plot.")
+        return
+
+    pie_data = df_filtered.groupby("Description")["Amount"].sum()
+
+    plt.figure(figsize=(8, 8))
+    plt.pie(
+        pie_data,
+        labels=pie_data.index,
+        autopct="%1.1f%%",
+        startangle=90,
+        colors=plt.cm.Paired.colors,
+    )
+    plt.title("Transaction Breakdown by Description")
+    plt.tight_layout()
+    plt.show()
+
+    fig = px.pie(
+        pie_data,
+        names=pie_data.index,
+        values=pie_data,
+        title="Transaction Breakdown by Description",
+    )
     fig.show()
 
 
@@ -136,7 +212,6 @@ def plot_data(df, plot_type):
         print("No data to plot.")
         return
 
-    # Filter out rows where 'Settled At' has missing values
     df = df.dropna(subset=["Settled At"]).copy()
 
     # Ensure 'Settled At' is in datetime format using .loc to avoid SettingWithCopyWarning
@@ -148,6 +223,8 @@ def plot_data(df, plot_type):
         plot_line(df)
     elif plot_type == "scatter":
         plot_scatter(df)
+    elif plot_type == "pie":
+        plot_pie(df)
     else:
         print(f"Plot type '{plot_type}' is not supported.")
 
@@ -166,9 +243,10 @@ def main(account_name, plot_type, since, until):
 
 
 if __name__ == "__main__":
+    check_access_token()
     print("Available accounts:", ", ".join(ACCOUNT_IDS.keys()))
     account_name = input("Enter account name: ").strip().upper()
-    plot_type = input("Enter plot type (bar, line, scatter): ").strip().lower()
+    plot_type = input("Enter plot type (bar, line, scatter, pie): ").strip().lower()
     since = input(
         "Enter start date (YYYY-MM-DD format) or leave blank for no start date: "
     ).strip()
