@@ -26,10 +26,12 @@ ACCOUNT_IDS = {
     "RENT": os.getenv("RENT"),
 }
 
-if not ACCESS_TOKEN:
-    raise ValueError(
-        "Please set the UP_API_TOKEN environment variable in your .env file."
-    )
+
+def check_access_token():
+    if not os.getenv("UP_API_TOKEN"):
+        raise ValueError(
+            "Please set the UP_API_TOKEN environment variable in your .env file."
+        )
 
 
 def fetch_transactions(account_id, since, until):
@@ -184,6 +186,7 @@ def main(account_name, plot_type, since, until):
 
 
 if __name__ == "__main__":
+    check_access_token()
     print("Available accounts:", ", ".join(ACCOUNT_IDS.keys()))
     account_name = input("Enter account name: ").strip().upper()
     plot_type = input("Enter plot type (bar, line, scatter): ").strip().lower()
