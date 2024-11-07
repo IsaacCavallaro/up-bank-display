@@ -57,6 +57,7 @@ def fetch_transactions(account_id, since, until):
 def process_transaction_data(transaction_data):
     """Convert transaction data to a DataFrame and prepare it for plotting."""
     if transaction_data and "data" in transaction_data:
+        # Normalize JSON data to create a DataFrame
         df = pd.json_normalize(
             transaction_data["data"],
             sep="_",
@@ -68,6 +69,7 @@ def process_transaction_data(transaction_data):
             ],
         )
 
+        # Rename and handle missing columns
         df.rename(
             columns={
                 "attributes_description": "Description",
@@ -80,14 +82,18 @@ def process_transaction_data(transaction_data):
 
         df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce").fillna(0)
         df["Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
-        df["Created At"] = pd.to_datetime(df["Created At"], errors="coerce")
+        df["Created At"] = pd.to_datetime(df["Created At"], errors="coerce", utc=True)
 
         # Drop rows where Created At is missing to avoid issues in plots
         df.dropna(subset=["Created At"], inplace=True)
 
-        # Create a combined x-axis label with Description and Created At
+        # Ensure Description is a string and Created At is in date format
+        df["Description"] = df["Description"].fillna("Unknown")
         df["Description_Date"] = (
-            df["Description"] + " (" + df["Created At"].dt.strftime("%Y-%m-%d") + ")"
+            df["Description"].astype(str)
+            + " ("
+            + df["Created At"].dt.strftime("%Y-%m-%d")
+            + ")"
         )
 
         return df
