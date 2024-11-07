@@ -64,26 +64,31 @@ def process_transaction_data(transaction_data):
                 ["attributes", "description"],
                 ["attributes", "amount", "value"],
                 ["attributes", "settledAt"],
+                ["attributes", "createdAt"],
             ],
         )
 
-        if "attributes_description" in df.columns:
-            df.rename(columns={"attributes_description": "Description"}, inplace=True)
-        else:
-            df["Description"] = None
+        df.rename(
+            columns={
+                "attributes_description": "Description",
+                "attributes_amount_value": "Amount",
+                "attributes_settledAt": "Settled At",
+                "attributes_createdAt": "Created At",
+            },
+            inplace=True,
+        )
 
-        if "attributes_amount_value" in df.columns:
-            df.rename(columns={"attributes_amount_value": "Amount"}, inplace=True)
-            df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce").fillna(
-                0
-            )  # Handle non-numeric gracefully
-        else:
-            df["Amount"] = 0.0
+        df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce").fillna(0)
+        df["Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
+        df["Created At"] = pd.to_datetime(df["Created At"], errors="coerce")
 
-        if "attributes_settledAt" in df.columns:
-            df.rename(columns={"attributes_settledAt": "Settled At"}, inplace=True)
-        else:
-            df["Settled At"] = None
+        # Drop rows where Created At is missing to avoid issues in plots
+        df.dropna(subset=["Created At"], inplace=True)
+
+        # Create a combined x-axis label with Description and Created At
+        df["Description_Date"] = (
+            df["Description"] + " (" + df["Created At"].dt.strftime("%Y-%m-%d") + ")"
+        )
 
         return df
     else:
@@ -92,21 +97,28 @@ def process_transaction_data(transaction_data):
 
 
 def plot_bar(df):
-    """Generate a bar plot for Description vs Amount."""
-    plt.bar(df["Description"], df["Amount"])
-    plt.title("Transaction Description vs Amount")
-    plt.xlabel("Description")
+    """Generate a bar plot for Description_Date vs Amount."""
+    plt.figure(figsize=(10, 6))
+    plt.bar(df["Description_Date"], df["Amount"], color="skyblue")
+    plt.title("Transaction Description and Creation Date vs Amount")
+    plt.xlabel("Description (Creation Date)")
     plt.ylabel("Amount (AUD)")
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
     plt.show()
 
+    # Plotly Bar Plot
     fig = px.bar(
         df,
-        x="Description",
+        x="Description_Date",
         y="Amount",
-        title="Transaction Description vs Amount",
+        title="Transaction Description and Creation Date vs Amount",
+        labels={
+            "Description_Date": "Description (Creation Date)",
+            "Amount": "Amount (AUD)",
+        },
     )
+    fig.update_layout(xaxis_tickangle=-45)
     fig.show()
 
 
