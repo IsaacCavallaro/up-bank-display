@@ -59,7 +59,6 @@ def fetch_transactions(account_id, since, until):
 def process_transaction_data(transaction_data):
     """Convert transaction data to a DataFrame and prepare it for plotting."""
     if transaction_data and "data" in transaction_data:
-        # Normalize JSON data to create a DataFrame
         df = pd.json_normalize(
             transaction_data["data"],
             sep="_",
@@ -71,7 +70,6 @@ def process_transaction_data(transaction_data):
             ],
         )
 
-        # Rename and handle missing columns
         df.rename(
             columns={
                 "attributes_description": "Description",
@@ -86,10 +84,8 @@ def process_transaction_data(transaction_data):
         df["Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
         df["Created At"] = pd.to_datetime(df["Created At"], errors="coerce", utc=True)
 
-        # Drop rows where Created At is missing to avoid issues in plots
         df.dropna(subset=["Created At"], inplace=True)
 
-        # Ensure Description is a string and Created At is in date format
         df["Description"] = df["Description"].fillna("Unknown")
         df["Description_Date"] = (
             df["Description"].astype(str)
@@ -115,7 +111,6 @@ def plot_bar(df):
     plt.tight_layout()
     plt.show()
 
-    # Plotly Bar Plot
     fig = px.bar(
         df,
         x="Description_Date",
@@ -131,22 +126,83 @@ def plot_bar(df):
 
 
 def plot_line(df):
-    """Generate a line plot for Amount over Time."""
-    plt.plot(df["Settled At"], df["Amount"], marker="o")
-    plt.title("Amount Over Time")
-    plt.xlabel("Date")
+    """Generate a line plot for Description_Date vs Amount."""
+    plt.figure(figsize=(10, 6))
+    plt.plot(df["Description_Date"], df["Amount"], marker="o", color="skyblue")
+    plt.title("Amount vs Description Date")
+    plt.xlabel("Description (Creation Date)")
     plt.ylabel("Amount (AUD)")
-    plt.xticks(rotation=45)
+    plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
     plt.show()
 
-    fig = px.line(df, x="Settled At", y="Amount", title="Amount Over Time")
+    fig = px.line(
+        df,
+        x="Description_Date",
+        y="Amount",
+        title="Amount vs Description Date",
+        labels={
+            "Description_Date": "Description (Creation Date)",
+            "Amount": "Amount (AUD)",
+        },
+    )
+    fig.update_layout(xaxis_tickangle=-45)
     fig.show()
 
 
 def plot_scatter(df):
-    """Generate a scatter plot for Description vs Amount."""
-    fig = px.scatter(df, x="Description", y="Amount", title="Transaction Scatter Plot")
+    """Generate a scatter plot for Description_Date vs Amount."""
+    plt.figure(figsize=(10, 6))
+    plt.scatter(df["Description_Date"], df["Amount"], color="skyblue")
+    plt.title("Transaction Scatter Plot")
+    plt.xlabel("Description (Creation Date)")
+    plt.ylabel("Amount (AUD)")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    plt.show()
+
+    fig = px.scatter(
+        df,
+        x="Description_Date",
+        y="Amount",
+        title="Transaction Scatter Plot",
+        labels={
+            "Description_Date": "Description (Creation Date)",
+            "Amount": "Amount (AUD)",
+        },
+    )
+    fig.update_layout(xaxis_tickangle=-45)
+    fig.show()
+
+
+def plot_pie(df):
+    """Generate a pie chart for Description and Amount."""
+    df_filtered = df[df["Amount"] > 0]
+
+    if df_filtered.empty:
+        print("No positive transaction amounts to plot.")
+        return
+
+    pie_data = df_filtered.groupby("Description")["Amount"].sum()
+
+    plt.figure(figsize=(8, 8))
+    plt.pie(
+        pie_data,
+        labels=pie_data.index,
+        autopct="%1.1f%%",
+        startangle=90,
+        colors=plt.cm.Paired.colors,
+    )
+    plt.title("Transaction Breakdown by Description")
+    plt.tight_layout()
+    plt.show()
+
+    fig = px.pie(
+        pie_data,
+        names=pie_data.index,
+        values=pie_data,
+        title="Transaction Breakdown by Description",
+    )
     fig.show()
 
 
@@ -156,7 +212,6 @@ def plot_data(df, plot_type):
         print("No data to plot.")
         return
 
-    # Filter out rows where 'Settled At' has missing values
     df = df.dropna(subset=["Settled At"]).copy()
 
     # Ensure 'Settled At' is in datetime format using .loc to avoid SettingWithCopyWarning
@@ -168,6 +223,8 @@ def plot_data(df, plot_type):
         plot_line(df)
     elif plot_type == "scatter":
         plot_scatter(df)
+    elif plot_type == "pie":
+        plot_pie(df)
     else:
         print(f"Plot type '{plot_type}' is not supported.")
 
@@ -189,7 +246,7 @@ if __name__ == "__main__":
     check_access_token()
     print("Available accounts:", ", ".join(ACCOUNT_IDS.keys()))
     account_name = input("Enter account name: ").strip().upper()
-    plot_type = input("Enter plot type (bar, line, scatter): ").strip().lower()
+    plot_type = input("Enter plot type (bar, line, scatter, pie): ").strip().lower()
     since = input(
         "Enter start date (YYYY-MM-DD format) or leave blank for no start date: "
     ).strip()
