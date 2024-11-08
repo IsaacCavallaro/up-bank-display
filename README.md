@@ -1,10 +1,11 @@
 # Up Bank Transaction Plotting
 
-This project allows you to fetch, process, and visualise transaction data using various types of plots. It fetches transaction data from a given account and plots the data using either a bar plot, line plot, or scatter plot.
+This project allows you to fetch, process, and visualise transaction data using various types of plots. It fetches transaction data from a given account and plots the data using either a bar plot, line plot, or pie plot.
 
 ## Requirements
 
 - Python 3.9 or later
+- Flask (web framework for running the app)
 - Poetry (for dependency management)
 - Up API account (for fetching transaction data)
 
@@ -109,3 +110,19 @@ UP_API_KEY=your_up_api_key
 ```
 
 ---
+
+### Step 7: Run App
+
+```bash
+python src/app.py      
+```
+
+The app will be accessible at <http://127.0.0.1:5000>
+
+# Tests
+
+Run tests with this command
+
+```bash
+pytest src/test_utils.py
+```
