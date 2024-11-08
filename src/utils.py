@@ -1,38 +1,13 @@
-import os
 import requests
 import pandas as pd
+import os
 import matplotlib
 
 matplotlib.use("Agg")  # Use non-GUI backend for matplotlib
 import matplotlib.pyplot as plt
 import plotly.express as px
-from dotenv import load_dotenv
 
-import io
-import matplotlib.pyplot as plt
-from flask import Response, jsonify
-import base64
-
-load_dotenv()
 ACCESS_TOKEN = os.getenv("UP_API_TOKEN")
-
-ACCOUNT_IDS = {
-    "BILLS": os.getenv("BILLS"),
-    "GIFTS": os.getenv("GIFTS"),  # TODO: Bug GIFTS not foound
-    "KIDS": os.getenv("KIDS"),
-    "EXTRAS": os.getenv("EXTRAS"),
-    "HOLIDAYS": os.getenv("HOLIDAYS"),
-    "SUPER": os.getenv("SUPER"),
-    "INVESTMENTS": os.getenv("INVESTMENTS"),
-    "RAINY_DAY": os.getenv("RAINY_DAY"),
-    "EMERGENCY": os.getenv("EMERGENCY"),
-    "HOME_DEPOSIT": os.getenv("HOME_DEPOSIT"),
-    "TRANSPORT": os.getenv("TRANSPORT"),
-    "HEALTH": os.getenv("HEALTH"),
-    "GROCERIES": os.getenv("GROCERIES"),
-    "PERSONAL_ACCOUNT": os.getenv("PERSONAL_ACCOUNT"),
-    "RENT": os.getenv("RENT"),
-}
 
 
 def check_access_token():
@@ -43,7 +18,6 @@ def check_access_token():
 
 
 def fetch_transactions(account_id, since, until):
-    """Fetch transactions from the Up API for a specific account and optional date filtering."""
     url = f"https://api.up.com.au/api/v1/accounts/{account_id}/transactions"
     headers = {
         "Authorization": f"Bearer {ACCESS_TOKEN}",
@@ -59,13 +33,10 @@ def fetch_transactions(account_id, since, until):
     if response.status_code == 200:
         return response.json()
     else:
-        print(f"Failed to retrieve data: {response.status_code}")
-        print(response.text)
-        return None
+        return {"error": "Failed to retrieve data"}
 
 
 def process_transaction_data(transaction_data):
-    """Convert transaction data to a DataFrame and prepare it for plotting."""
     if transaction_data and "data" in transaction_data:
         df = pd.json_normalize(
             transaction_data["data"],
@@ -99,7 +70,6 @@ def process_transaction_data(transaction_data):
         )
         return df
     else:
-        print("No transaction data found.")
         return pd.DataFrame()
 
 
@@ -107,12 +77,9 @@ def calculate_totals(df, account_name):
     deposits = df[df["Amount"] > 0]["Amount"].sum()
     withdrawals = df[df["Amount"] < 0]["Amount"].sum()
     plot_totals(withdrawals, deposits, account_name)
-    return {"deposits": deposits, "withdrawals": withdrawals}
 
 
-# Plotting functions
 def plot_totals(withdrawals, deposits, account_name):
-    """Plot a bar chart for total withdrawals and deposits."""
     plt.figure(figsize=(8, 5))
     categories = ["Withdrawals", "Deposits"]
     values = [withdrawals, deposits]
@@ -133,8 +100,22 @@ def plot_totals(withdrawals, deposits, account_name):
     fig.show()
 
 
+def plot_data(df, plot_type):
+    if df.empty:
+        return
+    df = df.dropna(subset=["Settled At"]).copy()
+    df.loc[:, "Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
+    if plot_type == "bar":
+        plot_bar(df)
+    elif plot_type == "line":
+        plot_line(df)
+    elif plot_type == "scatter":
+        plot_scatter(df)
+    elif plot_type == "pie":
+        plot_pie(df)
+
+
 def plot_bar(df):
-    # Generate the plot
     plt.figure(figsize=(10, 6))
     plt.bar(df["Description_Date"], df["Amount"], color="skyblue")
     plt.title("Transaction Description and Creation Date vs Amount")
@@ -142,20 +123,7 @@ def plot_bar(df):
     plt.ylabel("Amount (AUD)")
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
-
-    # Save the plot to a BytesIO object (in-memory file-like object)
-    img = io.BytesIO()
-    plt.savefig(img, format="png")
-    img.seek(0)  # Rewind the BytesIO object to the beginning
-
-    # Close the plot to release resources
-    plt.close()
-
-    # Encode the image to base64
-    plot_base64 = base64.b64encode(img.getvalue()).decode("utf-8")
-
-    # Return the base64-encoded image
-    return jsonify({"plotUrl": "data:image/png;base64," + plot_base64})
+    plt.show()
 
 
 def plot_line(df):
@@ -183,7 +151,6 @@ def plot_scatter(df):
 def plot_pie(df):
     df_filtered = df[df["Amount"] > 0]
     if df_filtered.empty:
-        print("No positive transaction amounts to plot.")
         return
     pie_data = df_filtered.groupby("Description")["Amount"].sum()
     plt.figure(figsize=(8, 8))
@@ -197,18 +164,3 @@ def plot_pie(df):
     plt.title("Transaction Breakdown by Description")
     plt.tight_layout()
     plt.show()
-
-
-def plot_data(df, plot_type):
-    """Generate a plot based on the given DataFrame and plot type."""
-    if df.empty:
-        print("No data to plot.")
-        return (
-            jsonify({"error": "No data to plot"}),
-            400,
-        )
-    df = df.dropna(subset=["Settled At"]).copy()
-    df.loc[:, "Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
-    if plot_type == "bar":
-        return plot_bar(df)
-    return jsonify({"error": "Invalid plot type"}), 400
