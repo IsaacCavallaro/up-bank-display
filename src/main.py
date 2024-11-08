@@ -1,16 +1,21 @@
+from flask import Flask, request, jsonify, render_template
 import os
 import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
 from dotenv import load_dotenv
+from utils import process_transaction_data, calculate_totals, plot_data
 
 load_dotenv()
+app = Flask(__name__)
+
+# API Token
 ACCESS_TOKEN = os.getenv("UP_API_TOKEN")
 
 ACCOUNT_IDS = {
     "BILLS": os.getenv("BILLS"),
-    "GIFTS": os.getenv("GIFTS"),  # TODO: Bug GIFTS not foound
+    "GIFTS": os.getenv("GIFTS"),
     "KIDS": os.getenv("KIDS"),
     "EXTRAS": os.getenv("EXTRAS"),
     "HOLIDAYS": os.getenv("HOLIDAYS"),
@@ -35,7 +40,6 @@ def check_access_token():
 
 
 def fetch_transactions(account_id, since, until):
-    """Fetch transactions from the Up API for a specific account and optional date filtering."""
     url = f"https://api.up.com.au/api/v1/accounts/{account_id}/transactions"
     headers = {
         "Authorization": f"Bearer {ACCESS_TOKEN}",
@@ -51,184 +55,39 @@ def fetch_transactions(account_id, since, until):
     if response.status_code == 200:
         return response.json()
     else:
-        print(f"Failed to retrieve data: {response.status_code}")
-        print(response.text)
-        return None
+        return {"error": "Failed to retrieve data"}
 
 
-def process_transaction_data(transaction_data):
-    """Convert transaction data to a DataFrame and prepare it for plotting."""
-    if transaction_data and "data" in transaction_data:
-        df = pd.json_normalize(
-            transaction_data["data"],
-            sep="_",
-            meta=[
-                ["attributes", "description"],
-                ["attributes", "amount", "value"],
-                ["attributes", "settledAt"],
-                ["attributes", "createdAt"],
-            ],
-        )
-        df.rename(
-            columns={
-                "attributes_description": "Description",
-                "attributes_amount_value": "Amount",
-                "attributes_settledAt": "Settled At",
-                "attributes_createdAt": "Created At",
-            },
-            inplace=True,
-        )
-        df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce").fillna(0)
-        df["Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
-        df["Created At"] = pd.to_datetime(df["Created At"], errors="coerce", utc=True)
-        df.dropna(subset=["Created At"], inplace=True)
-        df["Description"] = df["Description"].fillna("Unknown")
-        df["Description_Date"] = (
-            df["Description"].astype(str)
-            + " ("
-            + df["Created At"].dt.strftime("%Y-%m-%d")
-            + ")"
-        )
-        return df
-    else:
-        print("No transaction data found.")
-        return pd.DataFrame()
+# Route to display the form and handle submissions
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        account_name = request.form["account_name"]
+        feature_choice = request.form["feature_choice"]
+        plot_type = request.form["plot_type"]
+        since = request.form["since"]
+        until = request.form["until"]
 
+        # Fetch and process the transaction data
+        account_id = ACCOUNT_IDS.get(account_name)
+        if not account_id:
+            return jsonify({"error": "Invalid account name"})
 
-def calculate_totals(df, account_name):
-    """Calculate total deposits and withdrawals from the transaction data."""
-    deposits = df[df["Amount"] > 0]["Amount"].sum()
-    withdrawals = df[df["Amount"] < 0]["Amount"].sum()
-    plot_totals(withdrawals, deposits, account_name)
+        transaction_data = fetch_transactions(account_id, since, until)
+        if "error" in transaction_data:
+            return jsonify(transaction_data)
 
+        df = process_transaction_data(transaction_data)
+        if feature_choice == "totals":
+            calculate_totals(df, account_name)
+        elif feature_choice == "plot":
+            plot_data(df, plot_type)
 
-# Plotting functions
-def plot_totals(withdrawals, deposits, account_name):
-    """Plot a bar chart for total withdrawals and deposits."""
-    plt.figure(figsize=(8, 5))
-    categories = ["Withdrawals", "Deposits"]
-    values = [withdrawals, deposits]
+        return jsonify({"message": "Data processed successfully"})
 
-    plt.bar(categories, values, color=["salmon", "skyblue"])
-    plt.title("Total Withdrawals and Deposits")
-    plt.ylabel("Amount (AUD)")
-    plt.show()
-
-    fig = px.bar(
-        x=categories,
-        y=values,
-        title=f"Total Withdrawals & Deposits for {account_name}",
-        labels={"x": "Transaction Type", "y": "Amount (AUD)"},
-        color=categories,
-        color_discrete_map={"Withdrawals": "salmon", "Deposits": "skyblue"},
-    )
-    fig.show()
-
-
-def plot_bar(df):
-    plt.figure(figsize=(10, 6))
-    plt.bar(df["Description_Date"], df["Amount"], color="skyblue")
-    plt.title("Transaction Description and Creation Date vs Amount")
-    plt.xlabel("Description (Creation Date)")
-    plt.ylabel("Amount (AUD)")
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_line(df):
-    plt.figure(figsize=(10, 6))
-    plt.plot(df["Description_Date"], df["Amount"], marker="o", color="skyblue")
-    plt.title("Amount vs Description Date")
-    plt.xlabel("Description (Creation Date)")
-    plt.ylabel("Amount (AUD)")
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_scatter(df):
-    plt.figure(figsize=(10, 6))
-    plt.scatter(df["Description_Date"], df["Amount"], color="skyblue")
-    plt.title("Transaction Scatter Plot")
-    plt.xlabel("Description (Creation Date)")
-    plt.ylabel("Amount (AUD)")
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_pie(df):
-    df_filtered = df[df["Amount"] > 0]
-    if df_filtered.empty:
-        print("No positive transaction amounts to plot.")
-        return
-    pie_data = df_filtered.groupby("Description")["Amount"].sum()
-    plt.figure(figsize=(8, 8))
-    plt.pie(
-        pie_data,
-        labels=pie_data.index,
-        autopct="%1.1f%%",
-        startangle=90,
-        colors=plt.cm.Paired.colors,
-    )
-    plt.title("Transaction Breakdown by Description")
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_data(df, plot_type):
-    """Generate a plot based on the given DataFrame and plot type."""
-    if df.empty:
-        print("No data to plot.")
-        return
-    df = df.dropna(subset=["Settled At"]).copy()
-    df.loc[:, "Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
-    if plot_type == "bar":
-        plot_bar(df)
-    elif plot_type == "line":
-        plot_line(df)
-    elif plot_type == "scatter":
-        plot_scatter(df)
-    elif plot_type == "pie":
-        plot_pie(df)
-    else:
-        print(f"Plot type '{plot_type}' is not supported.")
-
-
-def main(account_name, feature_choice, plot_type=None, since=None, until=None):
-    account_id = ACCOUNT_IDS.get(account_name)
-    if not account_id:
-        print(f"Account '{account_name}' not found in environment variables.")
-        return
-    transaction_data = fetch_transactions(account_id, since, until)
-    df = process_transaction_data(transaction_data)
-    if feature_choice == "totals":
-        calculate_totals(df, account_name)
-    elif feature_choice == "plot":
-        plot_data(df, plot_type)
+    return render_template("index.html", accounts=ACCOUNT_IDS)
 
 
 if __name__ == "__main__":
     check_access_token()
-    print("Available accounts:", ", ".join(ACCOUNT_IDS.keys()))
-    account_name = input("Enter account name: ").strip().upper()
-    feature_choice = input("Choose feature (totals or plot): ").strip().lower()
-    plot_type = None
-    if feature_choice == "plot":
-        plot_type = input("Enter plot type (bar, line, scatter, pie): ").strip().lower()
-    since = input(
-        "Enter start date (YYYY-MM-DD format) or leave blank for no start date: "
-    ).strip()
-    until = input(
-        "Enter end date (YYYY-MM-DD format) or leave blank for no end date: "
-    ).strip()
-    since = f"{since}T00:00:00+10:00" if since else None
-    until = f"{until}T23:59:59+10:00" if until else None
-    main(
-        account_name=account_name,
-        feature_choice=feature_choice,
-        plot_type=plot_type,
-        since=since,
-        until=until,
-    )
+    app.run(debug=True)
