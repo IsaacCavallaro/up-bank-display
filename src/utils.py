@@ -72,9 +72,22 @@ def process_transaction_data(transaction_data):
 
 
 def calculate_totals(df, account_name):
-    deposits = df[df["Amount"] > 0]["Amount"].sum()
-    withdrawals = df[df["Amount"] < 0]["Amount"].sum()
-    plot_totals(withdrawals, deposits, account_name)
+    try:
+        if "Amount" not in df.columns:
+            raise ValueError("DataFrame is missing the 'Amount' column.")
+
+        deposits = df[df["Amount"] > 0]["Amount"].sum()
+        withdrawals = df[df["Amount"] < 0]["Amount"].sum()
+
+        if df.empty:
+            print("Warning: The DataFrame is empty. No transactions to process.")
+            return
+
+        plot_totals(withdrawals, deposits, account_name)
+
+    except Exception as e:
+        print(f"An error occurred in calculate_totals: {e}")
+        raise
 
 
 def plot_totals(withdrawals, deposits, account_name):
