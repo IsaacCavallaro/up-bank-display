@@ -5,6 +5,7 @@ from utils import (
     calculate_totals,
     plot_data,
     fetch_accounts,
+    plot_accounts_bar,
 )
 import os
 
@@ -32,6 +33,11 @@ ACCOUNT_IDS = {
 @main_routes.route("/", methods=["GET", "POST"])
 def index():
     accounts_data = fetch_accounts()
+
+    pie_chart_html = ""
+    if accounts_data:
+        pie_chart_html = plot_accounts_bar(accounts_data)
+
     if request.method == "POST":
         account_name = request.form["account_name"]
         feature_choice = request.form["feature_choice"]
@@ -50,9 +56,10 @@ def index():
         df = process_transaction_data(transaction_data)
         if feature_choice == "totals":
             calculate_totals(df, account_name)
-        elif feature_choice == "plot":
-            plot_data(df, plot_type, account_name)
 
     return render_template(
-        "index.html", accounts=ACCOUNT_IDS, accounts_data=accounts_data
+        "index.html",
+        accounts=ACCOUNT_IDS,
+        accounts_data=accounts_data,
+        pie_chart_html=pie_chart_html,
     )

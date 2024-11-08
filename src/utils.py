@@ -165,6 +165,32 @@ def plot_line(df):
     fig.show()
 
 
+def plot_accounts_bar(accounts_data):
+    # Generate the bar chart data
+    account_names = [account["attributes"]["displayName"] for account in accounts_data]
+    balances = [
+        float(account["attributes"]["balance"]["value"]) for account in accounts_data
+    ]  # Convert balances to floats
+
+    # Combine the account names and balances into a list of tuples for sorting
+    sorted_data = sorted(zip(account_names, balances), key=lambda x: x[1])
+
+    # Unzip the sorted data back into account names and balances
+    sorted_account_names, sorted_balances = zip(*sorted_data)
+
+    # Create the bar chart using Plotly
+    fig = px.bar(
+        x=sorted_account_names,  # X-axis is the sorted account names
+        y=sorted_balances,  # Y-axis is the sorted balances
+        labels={"x": "Account", "y": "Balance"},  # Axis labels
+        title="Account Balances Bar Chart",  # Title of the chart
+    )
+
+    # Return the HTML div of the bar chart
+    bar_chart_html = fig.to_html(full_html=False)
+    return bar_chart_html
+
+
 def plot_pie(df):
     df_filtered = df[df["Amount"] > 0]
     if df_filtered.empty:

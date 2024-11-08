@@ -6,8 +6,16 @@
     <title>Transaction Data</title>
     <!-- Tailwind CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body class="bg-gray-100 p-6">
+    <!-- bar chart display -->
+        <div class="mt-6">
+            <h2 class="text-xl font-semibold text-center">Account Balances</h2>
+            <div class="mt-4">
+                {{ pie_chart_html | safe }} <!-- Render the bar chart -->
+            </div>
+        </div>
 <!-- Dashboard displaying accounts -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {% for account in accounts_data %}
