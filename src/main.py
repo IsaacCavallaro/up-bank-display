@@ -10,7 +10,7 @@ ACCESS_TOKEN = os.getenv("UP_API_TOKEN")
 
 ACCOUNT_IDS = {
     "BILLS": os.getenv("BILLS"),
-    "GIFTS": os.getenv("GIFTS"),
+    "GIFTS": os.getenv("GIFTS"),  # TODO: Bug GIFTS not foound
     "KIDS": os.getenv("KIDS"),
     "EXTRAS": os.getenv("EXTRAS"),
     "HOLIDAYS": os.getenv("HOLIDAYS"),
@@ -95,15 +95,15 @@ def process_transaction_data(transaction_data):
         return pd.DataFrame()
 
 
-def calculate_totals(df):
+def calculate_totals(df, account_name):
     """Calculate total deposits and withdrawals from the transaction data."""
     deposits = df[df["Amount"] > 0]["Amount"].sum()
     withdrawals = df[df["Amount"] < 0]["Amount"].sum()
-    plot_totals(withdrawals, deposits)
+    plot_totals(withdrawals, deposits, account_name)
 
 
 # Plotting functions
-def plot_totals(withdrawals, deposits):
+def plot_totals(withdrawals, deposits, account_name):
     """Plot a bar chart for total withdrawals and deposits."""
     plt.figure(figsize=(8, 5))
     categories = ["Withdrawals", "Deposits"]
@@ -117,7 +117,7 @@ def plot_totals(withdrawals, deposits):
     fig = px.bar(
         x=categories,
         y=values,
-        title="Total Withdrawals and Deposits",
+        title=f"Total Withdrawals & Deposits for {account_name}",
         labels={"x": "Transaction Type", "y": "Amount (AUD)"},
         color=categories,
         color_discrete_map={"Withdrawals": "salmon", "Deposits": "skyblue"},
@@ -204,7 +204,7 @@ def main(account_name, feature_choice, plot_type=None, since=None, until=None):
     transaction_data = fetch_transactions(account_id, since, until)
     df = process_transaction_data(transaction_data)
     if feature_choice == "totals":
-        calculate_totals(df)
+        calculate_totals(df, account_name)
     elif feature_choice == "plot":
         plot_data(df, plot_type)
 
