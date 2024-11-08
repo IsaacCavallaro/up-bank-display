@@ -34,6 +34,20 @@ def fetch_transactions(account_id, since, until):
         return {"error": "Failed to retrieve data"}
 
 
+def fetch_accounts():
+    url = "https://api.up.com.au/api/v1/accounts"
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()["data"]
+    else:
+        return []
+
+
 def process_transaction_data(transaction_data):
     if transaction_data and "data" in transaction_data:
         df = pd.json_normalize(

@@ -4,6 +4,7 @@ from utils import (
     process_transaction_data,
     calculate_totals,
     plot_data,
+    fetch_accounts,
 )
 import os
 
@@ -30,6 +31,7 @@ ACCOUNT_IDS = {
 
 @main_routes.route("/", methods=["GET", "POST"])
 def index():
+    accounts_data = fetch_accounts()
     if request.method == "POST":
         account_name = request.form["account_name"]
         feature_choice = request.form["feature_choice"]
@@ -51,4 +53,6 @@ def index():
         elif feature_choice == "plot":
             plot_data(df, plot_type, account_name)
 
-    return render_template("index.html", accounts=ACCOUNT_IDS)
+    return render_template(
+        "index.html", accounts=ACCOUNT_IDS, accounts_data=accounts_data
+    )
