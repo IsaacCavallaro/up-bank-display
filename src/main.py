@@ -9,8 +9,8 @@ load_dotenv()
 ACCESS_TOKEN = os.getenv("UP_API_TOKEN")
 
 ACCOUNT_IDS = {
-    "BILLS_SAVER": os.getenv("BILLS_SAVER"),
-    "GIFTS": os.getenv("GIFTS"),
+    "BILLS": os.getenv("BILLS"),
+    "GIFTS": os.getenv("GIFTS"),  # TODO: Bug GIFTS not foound
     "KIDS": os.getenv("KIDS"),
     "EXTRAS": os.getenv("EXTRAS"),
     "HOLIDAYS": os.getenv("HOLIDAYS"),
@@ -69,7 +69,6 @@ def process_transaction_data(transaction_data):
                 ["attributes", "createdAt"],
             ],
         )
-
         df.rename(
             columns={
                 "attributes_description": "Description",
@@ -79,13 +78,10 @@ def process_transaction_data(transaction_data):
             },
             inplace=True,
         )
-
         df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce").fillna(0)
         df["Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
         df["Created At"] = pd.to_datetime(df["Created At"], errors="coerce", utc=True)
-
         df.dropna(subset=["Created At"], inplace=True)
-
         df["Description"] = df["Description"].fillna("Unknown")
         df["Description_Date"] = (
             df["Description"].astype(str)
@@ -93,15 +89,43 @@ def process_transaction_data(transaction_data):
             + df["Created At"].dt.strftime("%Y-%m-%d")
             + ")"
         )
-
         return df
     else:
         print("No transaction data found.")
         return pd.DataFrame()
 
 
+def calculate_totals(df, account_name):
+    """Calculate total deposits and withdrawals from the transaction data."""
+    deposits = df[df["Amount"] > 0]["Amount"].sum()
+    withdrawals = df[df["Amount"] < 0]["Amount"].sum()
+    plot_totals(withdrawals, deposits, account_name)
+
+
+# Plotting functions
+def plot_totals(withdrawals, deposits, account_name):
+    """Plot a bar chart for total withdrawals and deposits."""
+    plt.figure(figsize=(8, 5))
+    categories = ["Withdrawals", "Deposits"]
+    values = [withdrawals, deposits]
+
+    plt.bar(categories, values, color=["salmon", "skyblue"])
+    plt.title("Total Withdrawals and Deposits")
+    plt.ylabel("Amount (AUD)")
+    plt.show()
+
+    fig = px.bar(
+        x=categories,
+        y=values,
+        title=f"Total Withdrawals & Deposits for {account_name}",
+        labels={"x": "Transaction Type", "y": "Amount (AUD)"},
+        color=categories,
+        color_discrete_map={"Withdrawals": "salmon", "Deposits": "skyblue"},
+    )
+    fig.show()
+
+
 def plot_bar(df):
-    """Generate a bar plot for Description_Date vs Amount."""
     plt.figure(figsize=(10, 6))
     plt.bar(df["Description_Date"], df["Amount"], color="skyblue")
     plt.title("Transaction Description and Creation Date vs Amount")
@@ -111,22 +135,8 @@ def plot_bar(df):
     plt.tight_layout()
     plt.show()
 
-    fig = px.bar(
-        df,
-        x="Description_Date",
-        y="Amount",
-        title="Transaction Description and Creation Date vs Amount",
-        labels={
-            "Description_Date": "Description (Creation Date)",
-            "Amount": "Amount (AUD)",
-        },
-    )
-    fig.update_layout(xaxis_tickangle=-45)
-    fig.show()
-
 
 def plot_line(df):
-    """Generate a line plot for Description_Date vs Amount."""
     plt.figure(figsize=(10, 6))
     plt.plot(df["Description_Date"], df["Amount"], marker="o", color="skyblue")
     plt.title("Amount vs Description Date")
@@ -136,22 +146,8 @@ def plot_line(df):
     plt.tight_layout()
     plt.show()
 
-    fig = px.line(
-        df,
-        x="Description_Date",
-        y="Amount",
-        title="Amount vs Description Date",
-        labels={
-            "Description_Date": "Description (Creation Date)",
-            "Amount": "Amount (AUD)",
-        },
-    )
-    fig.update_layout(xaxis_tickangle=-45)
-    fig.show()
-
 
 def plot_scatter(df):
-    """Generate a scatter plot for Description_Date vs Amount."""
     plt.figure(figsize=(10, 6))
     plt.scatter(df["Description_Date"], df["Amount"], color="skyblue")
     plt.title("Transaction Scatter Plot")
@@ -161,30 +157,13 @@ def plot_scatter(df):
     plt.tight_layout()
     plt.show()
 
-    fig = px.scatter(
-        df,
-        x="Description_Date",
-        y="Amount",
-        title="Transaction Scatter Plot",
-        labels={
-            "Description_Date": "Description (Creation Date)",
-            "Amount": "Amount (AUD)",
-        },
-    )
-    fig.update_layout(xaxis_tickangle=-45)
-    fig.show()
-
 
 def plot_pie(df):
-    """Generate a pie chart for Description and Amount."""
     df_filtered = df[df["Amount"] > 0]
-
     if df_filtered.empty:
         print("No positive transaction amounts to plot.")
         return
-
     pie_data = df_filtered.groupby("Description")["Amount"].sum()
-
     plt.figure(figsize=(8, 8))
     plt.pie(
         pie_data,
@@ -197,26 +176,14 @@ def plot_pie(df):
     plt.tight_layout()
     plt.show()
 
-    fig = px.pie(
-        pie_data,
-        names=pie_data.index,
-        values=pie_data,
-        title="Transaction Breakdown by Description",
-    )
-    fig.show()
-
 
 def plot_data(df, plot_type):
     """Generate a plot based on the given DataFrame and plot type."""
     if df.empty:
         print("No data to plot.")
         return
-
     df = df.dropna(subset=["Settled At"]).copy()
-
-    # Ensure 'Settled At' is in datetime format using .loc to avoid SettingWithCopyWarning
     df.loc[:, "Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
-
     if plot_type == "bar":
         plot_bar(df)
     elif plot_type == "line":
@@ -229,32 +196,39 @@ def plot_data(df, plot_type):
         print(f"Plot type '{plot_type}' is not supported.")
 
 
-def main(account_name, plot_type, since, until):
-    """Main function to fetch, process, and plot data for a specified account."""
+def main(account_name, feature_choice, plot_type=None, since=None, until=None):
     account_id = ACCOUNT_IDS.get(account_name)
     if not account_id:
         print(f"Account '{account_name}' not found in environment variables.")
         return
-
     transaction_data = fetch_transactions(account_id, since, until)
     df = process_transaction_data(transaction_data)
-
-    plot_data(df, plot_type)
+    if feature_choice == "totals":
+        calculate_totals(df, account_name)
+    elif feature_choice == "plot":
+        plot_data(df, plot_type)
 
 
 if __name__ == "__main__":
     check_access_token()
     print("Available accounts:", ", ".join(ACCOUNT_IDS.keys()))
     account_name = input("Enter account name: ").strip().upper()
-    plot_type = input("Enter plot type (bar, line, scatter, pie): ").strip().lower()
+    feature_choice = input("Choose feature (totals or plot): ").strip().lower()
+    plot_type = None
+    if feature_choice == "plot":
+        plot_type = input("Enter plot type (bar, line, scatter, pie): ").strip().lower()
     since = input(
         "Enter start date (YYYY-MM-DD format) or leave blank for no start date: "
     ).strip()
     until = input(
         "Enter end date (YYYY-MM-DD format) or leave blank for no end date: "
     ).strip()
-
     since = f"{since}T00:00:00+10:00" if since else None
     until = f"{until}T23:59:59+10:00" if until else None
-
-    main(account_name=account_name, plot_type=plot_type, since=since, until=until)
+    main(
+        account_name=account_name,
+        feature_choice=feature_choice,
+        plot_type=plot_type,
+        since=since,
+        until=until,
+    )
