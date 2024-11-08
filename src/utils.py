@@ -103,8 +103,10 @@ def plot_totals(withdrawals, deposits, account_name):
 def plot_data(df, plot_type):
     if df.empty:
         return
+    # Ensure 'Settled At' is a valid date field
     df = df.dropna(subset=["Settled At"]).copy()
-    df.loc[:, "Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
+    df["Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
+
     if plot_type == "bar":
         plot_bar(df)
     elif plot_type == "line":
@@ -116,51 +118,50 @@ def plot_data(df, plot_type):
 
 
 def plot_bar(df):
-    plt.figure(figsize=(10, 6))
-    plt.bar(df["Description_Date"], df["Amount"], color="skyblue")
-    plt.title("Transaction Description and Creation Date vs Amount")
-    plt.xlabel("Description (Creation Date)")
-    plt.ylabel("Amount (AUD)")
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-    plt.show()
+    fig = px.bar(
+        df,
+        x="Description_Date",
+        y="Amount",
+        title="Transaction Description and Creation Date vs Amount",
+        labels={
+            "Description_Date": "Description (Creation Date)",
+            "Amount": "Amount (AUD)",
+        },
+    )
+    fig.show()
 
 
 def plot_line(df):
-    plt.figure(figsize=(10, 6))
-    plt.plot(df["Description_Date"], df["Amount"], marker="o", color="skyblue")
-    plt.title("Amount vs Description Date")
-    plt.xlabel("Description (Creation Date)")
-    plt.ylabel("Amount (AUD)")
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-    plt.show()
+    fig = px.line(
+        df,
+        x="Settled At",
+        y="Amount",
+        title="Line Plot of Amount Over Time",
+        labels={"Settled At": "Settled Date", "Amount": "Amount (AUD)"},
+    )
+    fig.show()
 
 
 def plot_scatter(df):
-    plt.figure(figsize=(10, 6))
-    plt.scatter(df["Description_Date"], df["Amount"], color="skyblue")
-    plt.title("Transaction Scatter Plot")
-    plt.xlabel("Description (Creation Date)")
-    plt.ylabel("Amount (AUD)")
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-    plt.show()
+    fig = px.scatter(
+        df,
+        x="Settled At",
+        y="Amount",
+        title="Scatter Plot of Amount",
+        labels={"Settled At": "Settled Date", "Amount": "Amount (AUD)"},
+    )
+    fig.show()
 
 
 def plot_pie(df):
     df_filtered = df[df["Amount"] > 0]
     if df_filtered.empty:
         return
-    pie_data = df_filtered.groupby("Description")["Amount"].sum()
-    plt.figure(figsize=(8, 8))
-    plt.pie(
-        pie_data,
-        labels=pie_data.index,
-        autopct="%1.1f%%",
-        startangle=90,
-        colors=plt.cm.Paired.colors,
+    df_filtered.groupby("Description")["Amount"].sum()
+    fig = px.pie(
+        df_filtered,
+        names="Description_Date",
+        values="Amount",
+        title="Pie Chart of Amount by Description Date",
     )
-    plt.title("Transaction Breakdown by Description")
-    plt.tight_layout()
-    plt.show()
+    fig.show()
