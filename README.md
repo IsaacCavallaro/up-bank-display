@@ -1,6 +1,6 @@
 # Up Bank Transaction Plotting
 
-This project allows you to fetch, process, and visualise transaction data using various types of plots. It fetches transaction data from a given account and plots the data using either a bar plot, line plot, or scatter plot.
+This project allows you to fetch, process, and visualise transaction data using various types of plots. It fetches transaction data from a given account and plots the data using either a bar plot, line plot, or pie plot.
 
 ## Requirements
 

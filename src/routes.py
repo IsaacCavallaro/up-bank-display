@@ -49,8 +49,6 @@ def index():
         if feature_choice == "totals":
             calculate_totals(df, account_name)
         elif feature_choice == "plot":
-            plot_data(df, plot_type)
-
-        return jsonify({"message": "Data processed successfully"})
+            plot_data(df, plot_type, account_name)
 
     return render_template("index.html", accounts=ACCOUNT_IDS)

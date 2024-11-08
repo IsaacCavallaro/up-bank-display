@@ -98,7 +98,7 @@ def plot_totals(withdrawals, deposits, account_name):
     fig.show()
 
 
-def plot_data(df, plot_type):
+def plot_data(df, plot_type, account_name):
     if df.empty:
         return
     # Ensure 'Settled At' is a valid date field
@@ -106,21 +106,19 @@ def plot_data(df, plot_type):
     df["Settled At"] = pd.to_datetime(df["Settled At"], errors="coerce")
 
     if plot_type == "bar":
-        plot_bar(df)
+        plot_bar(df, account_name)
     elif plot_type == "line":
         plot_line(df)
-    elif plot_type == "scatter":
-        plot_scatter(df)
     elif plot_type == "pie":
         plot_pie(df)
 
 
-def plot_bar(df):
+def plot_bar(df, account_name):
     fig = px.bar(
         df,
         x="Description_Date",
         y="Amount",
-        title="Transaction Description and Creation Date vs Amount",
+        title=f"Transaction Details for {account_name}",
         labels={
             "Description_Date": "Description (Creation Date)",
             "Amount": "Amount (AUD)",
@@ -135,17 +133,6 @@ def plot_line(df):
         x="Settled At",
         y="Amount",
         title="Line Plot of Amount Over Time",
-        labels={"Settled At": "Settled Date", "Amount": "Amount (AUD)"},
-    )
-    fig.show()
-
-
-def plot_scatter(df):
-    fig = px.scatter(
-        df,
-        x="Settled At",
-        y="Amount",
-        title="Scatter Plot of Amount",
         labels={"Settled At": "Settled Date", "Amount": "Amount (AUD)"},
     )
     fig.show()
