@@ -24,10 +24,8 @@ def fetch_transactions(account_id, since, until):
         "Content-Type": "application/json",
     }
     params = {}
-    if since:
-        params["filter[since]"] = since
-    if until:
-        params["filter[until]"] = until
+    params["filter[since]"] = f"{since}T00:00:00+10:00" if since else None
+    params["filter[until]"] = f"{until}T23:59:59+10:00" if until else None
 
     response = requests.get(url, headers=headers, params=params)
     if response.status_code == 200:
