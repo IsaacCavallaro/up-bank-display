@@ -23,15 +23,30 @@ def inital_fetch_transactions(account_id, since, until):
         "Authorization": f"Bearer {ACCESS_TOKEN}",
         "Content-Type": "application/json",
     }
-    params = {}
-    params["filter[since]"] = since if since else None
-    params["filter[until]"] = until if until else None
 
-    response = requests.get(url, headers=headers, params=params)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        return {"error": "Failed to retrieve data"}
+    # Prepare parameters for the initial request
+    params = {
+        "filter[since]": since if since else None,
+        "filter[until]": until if until else None,
+        "page[size]": 100,  # Adjust the page size if needed
+    }
+
+    all_transactions = []
+
+    while url:
+        response = requests.get(url, headers=headers, params=params)
+
+        if response.status_code == 200:
+            data = response.json()
+            all_transactions.extend(data["data"])
+
+            # Check if there's a next page
+            url = data["links"].get("next", None)
+            params = {}
+        else:
+            return {"error": "Failed to retrieve data"}
+
+    return {"transactions": all_transactions}
 
 
 def fetch_transactions(account_id, since, until):
@@ -196,13 +211,12 @@ def plot_pie(df):
     fig.show()
 
 
-def plot_accounts_bar(accounts_data):
-    # Extract withdrawals and deposits from accounts_data
-    transactions = accounts_data["data"]
+def plot_initial_bar(accounts_data):
+    transactions = accounts_data["transactions"]
 
-    # Separate deposits and withdrawals
+    # Store withdrawals as negative values
     withdrawals = [
-        abs(float(txn["attributes"]["amount"]["value"]))
+        float(txn["attributes"]["amount"]["value"])
         for txn in transactions
         if float(txn["attributes"]["amount"]["value"]) < 0
     ]
@@ -212,13 +226,15 @@ def plot_accounts_bar(accounts_data):
         if float(txn["attributes"]["amount"]["value"]) > 0
     ]
 
-    # Prepare bar chart data for Plotly
     fig = px.bar(
         x=["Withdrawals", "Deposits"],
         y=[sum(withdrawals), sum(deposits)],
         labels={"x": "Transaction Type", "y": "Amount (AUD)"},
         title="Total Withdrawals and Deposits for '2UP' Account",
     )
+
+    # Update colors for each bar
+    fig.update_traces(marker_color=["red", "green"])
 
     # Return the HTML div of the bar chart
     bar_chart_html = fig.to_html(full_html=False)

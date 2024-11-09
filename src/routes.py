@@ -4,8 +4,7 @@ from utils import (
     process_transaction_data,
     calculate_totals,
     plot_data,
-    fetch_accounts,
-    plot_accounts_bar,
+    plot_initial_bar,
     inital_fetch_transactions,
 )
 import os
@@ -36,39 +35,24 @@ ACCOUNT_IDS = {
 @main_routes.route("/", methods=["GET", "POST"])
 def index():
     ACCOUNT_2UP_ID = os.getenv("2UP")
-    since = (date.today() - timedelta(days=1)).strftime("%Y-%m-%dT00:00:00+10:00")
-    until = datetime.today().strftime("%Y-%m-%dT23:59:59+10:00")
-
-    initial_two_up_data = inital_fetch_transactions(ACCOUNT_2UP_ID, since, until)
-
-    bar_chart_html = ""
-    if initial_two_up_data:
-        bar_chart_html = plot_accounts_bar(initial_two_up_data)
 
     if request.method == "POST":
-        account_name = request.form["account_name"]
-        feature_choice = request.form["feature_choice"]
-        plot_type = request.form["plot_type"]
-        since = request.form["since"]
-        until = request.form["until"]
+        since = request.form.get("since")
+        until = request.form.get("until")
+    else:
+        since = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+        until = date.today().strftime("%Y-%m-%d")
 
-        account_id = ACCOUNT_IDS.get(account_name)
-        if not account_id:
-            return jsonify({"error": "Invalid account name"})
+    accounts_data = inital_fetch_transactions(
+        ACCOUNT_2UP_ID, f"{since}T00:00:00+10:00", f"{until}T23:59:59+10:00"
+    )
 
-        transaction_data = fetch_transactions(account_id, since, until)
-        if "error" in transaction_data:
-            return jsonify(transaction_data)
-
-        df = process_transaction_data(transaction_data)
-        if feature_choice == "totals":
-            calculate_totals(df, account_name)
-        if feature_choice == "plot":
-            plot_data(df, plot_type, account_name)
+    bar_chart_html = plot_initial_bar(accounts_data)
 
     return render_template(
         "index.html",
-        accounts=ACCOUNT_IDS,
-        accounts_data=initial_two_up_data,
+        accounts_data=accounts_data,
         bar_chart_html=bar_chart_html,
+        default_since=since,
+        default_until=until,
     )
