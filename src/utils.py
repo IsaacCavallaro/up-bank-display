@@ -17,6 +17,23 @@ def check_access_token():
         )
 
 
+def inital_fetch_transactions(account_id, since, until):
+    url = f"https://api.up.com.au/api/v1/accounts/{account_id}/transactions"
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    params = {}
+    params["filter[since]"] = since if since else None
+    params["filter[until]"] = until if until else None
+
+    response = requests.get(url, headers=headers, params=params)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return {"error": "Failed to retrieve data"}
+
+
 def fetch_transactions(account_id, since, until):
     url = f"https://api.up.com.au/api/v1/accounts/{account_id}/transactions"
     headers = {
@@ -165,32 +182,6 @@ def plot_line(df):
     fig.show()
 
 
-def plot_accounts_bar(accounts_data):
-    # Generate the bar chart data
-    account_names = [account["attributes"]["displayName"] for account in accounts_data]
-    balances = [
-        float(account["attributes"]["balance"]["value"]) for account in accounts_data
-    ]  # Convert balances to floats
-
-    # Combine the account names and balances into a list of tuples for sorting
-    sorted_data = sorted(zip(account_names, balances), key=lambda x: x[1])
-
-    # Unzip the sorted data back into account names and balances
-    sorted_account_names, sorted_balances = zip(*sorted_data)
-
-    # Create the bar chart using Plotly
-    fig = px.bar(
-        x=sorted_account_names,  # X-axis is the sorted account names
-        y=sorted_balances,  # Y-axis is the sorted balances
-        labels={"x": "Account", "y": "Balance"},  # Axis labels
-        title="Account Balances Bar Chart",  # Title of the chart
-    )
-
-    # Return the HTML div of the bar chart
-    bar_chart_html = fig.to_html(full_html=False)
-    return bar_chart_html
-
-
 def plot_pie(df):
     df_filtered = df[df["Amount"] > 0]
     if df_filtered.empty:
@@ -203,3 +194,32 @@ def plot_pie(df):
         title="Pie Chart of Amount by Description Date",
     )
     fig.show()
+
+
+def plot_accounts_bar(accounts_data):
+    # Extract withdrawals and deposits from accounts_data
+    transactions = accounts_data["data"]
+
+    # Separate deposits and withdrawals
+    withdrawals = [
+        abs(float(txn["attributes"]["amount"]["value"]))
+        for txn in transactions
+        if float(txn["attributes"]["amount"]["value"]) < 0
+    ]
+    deposits = [
+        float(txn["attributes"]["amount"]["value"])
+        for txn in transactions
+        if float(txn["attributes"]["amount"]["value"]) > 0
+    ]
+
+    # Prepare bar chart data for Plotly
+    fig = px.bar(
+        x=["Withdrawals", "Deposits"],
+        y=[sum(withdrawals), sum(deposits)],
+        labels={"x": "Transaction Type", "y": "Amount (AUD)"},
+        title="Total Withdrawals and Deposits for '2UP' Account",
+    )
+
+    # Return the HTML div of the bar chart
+    bar_chart_html = fig.to_html(full_html=False)
+    return bar_chart_html

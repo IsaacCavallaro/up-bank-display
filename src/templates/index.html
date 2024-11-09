@@ -6,6 +6,7 @@
     <title>Transaction Data</title>
     <!-- Tailwind CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Plotly CDN -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body class="bg-gray-100 p-6">
@@ -13,18 +14,11 @@
         <div class="mt-6">
             <h2 class="text-xl font-semibold text-center">Account Balances</h2>
             <div class="mt-4">
-                {{ pie_chart_html | safe }} <!-- Render the bar chart -->
+                {{ bar_chart_html | safe }} <!-- Render the bar chart -->
             </div>
         </div>
-<!-- Dashboard displaying accounts -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {% for account in accounts_data %}
-                <div class="p-4 bg-gray-100 border rounded-lg shadow-md">
-                    <h2 class="text-xl font-semibold">{{ account['attributes']['displayName'] }}</h2>
-                    <p class="text-gray-700">Balance: {{ account['attributes']['balance']['value'] }} {{ account['attributes']['balance']['currencyCode'] }}</p>
-                </div>
-            {% endfor %}
-        </div>
+
+    <!-- Plot Form -->
     <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
         <h1 class="text-2xl font-bold text-center mb-6">Transaction Data</h1>
         <form method="POST" action="/" class="space-y-4">
@@ -36,7 +30,6 @@
                     {% endfor %}
                 </select>
             </div>
-
             <div>
                 <label for="feature_choice" class="block font-medium text-gray-700">Feature:</label>
                 <select id="feature_choice" name="feature_choice" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
