@@ -17,7 +17,7 @@ def check_access_token():
         )
 
 
-def inital_fetch_transactions(account_id, since, until):
+def fetch_transactions(account_id, since, until):
     url = f"https://api.up.com.au/api/v1/accounts/{account_id}/transactions"
     headers = {
         "Authorization": f"Bearer {ACCESS_TOKEN}",
@@ -49,21 +49,21 @@ def inital_fetch_transactions(account_id, since, until):
     return {"transactions": all_transactions}
 
 
-def fetch_transactions(account_id, since, until):
-    url = f"https://api.up.com.au/api/v1/accounts/{account_id}/transactions"
-    headers = {
-        "Authorization": f"Bearer {ACCESS_TOKEN}",
-        "Content-Type": "application/json",
-    }
-    params = {}
-    params["filter[since]"] = f"{since}T00:00:00+10:00" if since else None
-    params["filter[until]"] = f"{until}T23:59:59+10:00" if until else None
+# def fetch_transactions(account_id, since, until):
+#     url = f"https://api.up.com.au/api/v1/accounts/{account_id}/transactions"
+#     headers = {
+#         "Authorization": f"Bearer {ACCESS_TOKEN}",
+#         "Content-Type": "application/json",
+#     }
+#     params = {}
+#     params["filter[since]"] = f"{since}T00:00:00+10:00" if since else None
+#     params["filter[until]"] = f"{until}T23:59:59+10:00" if until else None
 
-    response = requests.get(url, headers=headers, params=params)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        return {"error": "Failed to retrieve data"}
+#     response = requests.get(url, headers=headers, params=params)
+#     if response.status_code == 200:
+#         return response.json()
+#     else:
+#         return {"error": "Failed to retrieve data"}
 
 
 def fetch_accounts():
@@ -211,7 +211,7 @@ def plot_pie(df):
     fig.show()
 
 
-def plot_initial_bar(accounts_data):
+def plot_dashboard_bar(accounts_data, account_name):
     transactions = accounts_data["transactions"]
 
     # Store withdrawals as negative values
@@ -226,11 +226,12 @@ def plot_initial_bar(accounts_data):
         if float(txn["attributes"]["amount"]["value"]) > 0
     ]
 
+    # Dynamically set the title with the selected account name
     fig = px.bar(
         x=["Withdrawals", "Deposits"],
         y=[sum(withdrawals), sum(deposits)],
         labels={"x": "Transaction Type", "y": "Amount (AUD)"},
-        title="Total Withdrawals and Deposits for '2UP' Account",
+        title=f"Total Withdrawals and Deposits for '{account_name}' Account",
     )
 
     # Update colors for each bar

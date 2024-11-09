@@ -1,14 +1,11 @@
-from flask import Blueprint, request, render_template, jsonify
-from utils import (
-    fetch_transactions,
-    process_transaction_data,
-    calculate_totals,
-    plot_data,
-    plot_initial_bar,
-    inital_fetch_transactions,
-)
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
+from flask import Blueprint, request, render_template
+from utils import (
+    plot_dashboard_bar,
+    fetch_transactions,
+)
+
 
 main_routes = Blueprint("main_routes", __name__)
 
@@ -34,20 +31,27 @@ ACCOUNT_IDS = {
 
 @main_routes.route("/", methods=["GET", "POST"])
 def index():
-    ACCOUNT_2UP_ID = os.getenv("2UP")
+    selected_account_name = "2UP"
 
     if request.method == "POST":
         since = request.form.get("since")
         until = request.form.get("until")
+        selected_account_name = request.form.get("account")
     else:
-        since = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+        since = (date.today() - timedelta(days=8)).strftime("%Y-%m-%d")
         until = date.today().strftime("%Y-%m-%d")
 
-    accounts_data = inital_fetch_transactions(
-        ACCOUNT_2UP_ID, f"{since}T00:00:00+10:00", f"{until}T23:59:59+10:00"
+    ACCOUNT_ID = ACCOUNT_IDS.get(
+        selected_account_name, os.getenv(selected_account_name)
     )
 
-    bar_chart_html = plot_initial_bar(accounts_data)
+    accounts_data = fetch_transactions(
+        ACCOUNT_ID, f"{since}T00:00:00+10:00", f"{until}T23:59:59+10:00"
+    )
+
+    bar_chart_html = plot_dashboard_bar(accounts_data, selected_account_name)
+
+    account_names = list(ACCOUNT_IDS.keys())
 
     return render_template(
         "index.html",
@@ -55,4 +59,6 @@ def index():
         bar_chart_html=bar_chart_html,
         default_since=since,
         default_until=until,
+        account_names=account_names,
+        selected_account_name=selected_account_name,
     )

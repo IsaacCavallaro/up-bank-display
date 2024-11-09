@@ -10,38 +10,50 @@
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body class="bg-gray-100 p-6">
-        <div class="mt-6">
-            <h2 class="text-xl font-semibold text-center">Account Balances</h2>
+    <div class="mt-6">
+        <h2 class="text-xl font-semibold text-center">Account Balances</h2>
 
-            <!-- Date range selection form -->
-            <form method="POST" action="/" class="text-center mb-4">
-                <label for="since" class="mr-2">From:</label>
-                <input
-                    type="date"
-                    id="since"
-                    name="since"
-                    value="{{ request.form.get('since', default_since) }}"
-                    class="border rounded p-1 mr-4"
-                    required
-                >
-                
-                <label for="until" class="mr-2">To:</label>
-                <input
-                    type="date"
-                    id="until"
-                    name="until"
-                    value="{{ request.form.get('until', default_until) }}"
-                    class="border rounded p-1 mr-4"
-                    required
-                >
-                
-                <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Update</button>
-            </form>
+        <!-- Date range selection form -->
+        <form method="POST" action="/" class="text-center mb-4">
+            <label for="since" class="mr-2">From:</label>
+            <input
+                type="date"
+                id="since"
+                name="since"
+                value="{{ request.form.get('since', default_since) }}"
+                class="border rounded p-1 mr-4"
+                required
+            >
 
-            <!-- Display the bar chart -->
-            <div class="mt-4">
-                {{ bar_chart_html | safe }}
-            </div>
+            <label for="until" class="mr-2">To:</label>
+            <input
+                type="date"
+                id="until"
+                name="until"
+                value="{{ request.form.get('until', default_until) }}"
+                class="border rounded p-1 mr-4"
+                required
+            >
+
+            <label for="account" class="mr-2">Account:</label>
+            <select
+                id="account"
+                name="account"
+                class="border rounded p-1 mr-4"
+                required
+            >
+                {% for account_name in account_names %}
+                    <option value="{{ account_name }}" {% if account_name == selected_account %}selected{% endif %}>{{ account_name }}</option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Update</button>
+        </form>
+
+        <!-- Display the bar chart -->
+        <div class="mt-4">
+            {{ bar_chart_html | safe }}
         </div>
+    </div>
 </body>
 </html>
