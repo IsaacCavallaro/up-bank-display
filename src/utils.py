@@ -23,15 +23,61 @@ def fetch_transactions(account_id, since, until):
         "Authorization": f"Bearer {ACCESS_TOKEN}",
         "Content-Type": "application/json",
     }
-    params = {}
-    params["filter[since]"] = f"{since}T00:00:00+10:00" if since else None
-    params["filter[until]"] = f"{until}T23:59:59+10:00" if until else None
 
-    response = requests.get(url, headers=headers, params=params)
+    # Prepare parameters for the initial request
+    params = {
+        "filter[since]": since if since else None,
+        "filter[until]": until if until else None,
+        "page[size]": 100,  # Adjust the page size if needed
+    }
+
+    all_transactions = []
+
+    while url:
+        response = requests.get(url, headers=headers, params=params)
+
+        if response.status_code == 200:
+            data = response.json()
+            all_transactions.extend(data["data"])
+
+            # Check if there's a next page
+            url = data["links"].get("next", None)
+            params = {}
+        else:
+            return {"error": "Failed to retrieve data"}
+
+    return {"transactions": all_transactions}
+
+
+# def fetch_transactions(account_id, since, until):
+#     url = f"https://api.up.com.au/api/v1/accounts/{account_id}/transactions"
+#     headers = {
+#         "Authorization": f"Bearer {ACCESS_TOKEN}",
+#         "Content-Type": "application/json",
+#     }
+#     params = {}
+#     params["filter[since]"] = f"{since}T00:00:00+10:00" if since else None
+#     params["filter[until]"] = f"{until}T23:59:59+10:00" if until else None
+
+#     response = requests.get(url, headers=headers, params=params)
+#     if response.status_code == 200:
+#         return response.json()
+#     else:
+#         return {"error": "Failed to retrieve data"}
+
+
+def fetch_accounts():
+    url = "https://api.up.com.au/api/v1/accounts"
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    response = requests.get(url, headers=headers)
     if response.status_code == 200:
-        return response.json()
+        return response.json()["data"]
     else:
-        return {"error": "Failed to retrieve data"}
+        return []
 
 
 def process_transaction_data(transaction_data):
@@ -163,3 +209,34 @@ def plot_pie(df):
         title="Pie Chart of Amount by Description Date",
     )
     fig.show()
+
+
+def plot_dashboard_bar(accounts_data, account_name):
+    transactions = accounts_data["transactions"]
+
+    # Store withdrawals as negative values
+    withdrawals = [
+        float(txn["attributes"]["amount"]["value"])
+        for txn in transactions
+        if float(txn["attributes"]["amount"]["value"]) < 0
+    ]
+    deposits = [
+        float(txn["attributes"]["amount"]["value"])
+        for txn in transactions
+        if float(txn["attributes"]["amount"]["value"]) > 0
+    ]
+
+    # Dynamically set the title with the selected account name
+    fig = px.bar(
+        x=["Withdrawals", "Deposits"],
+        y=[sum(withdrawals), sum(deposits)],
+        labels={"x": "Transaction Type", "y": "Amount (AUD)"},
+        title=f"Total Withdrawals and Deposits for '{account_name}' Account",
+    )
+
+    # Update colors for each bar
+    fig.update_traces(marker_color=["red", "green"])
+
+    # Return the HTML div of the bar chart
+    bar_chart_html = fig.to_html(full_html=False)
+    return bar_chart_html

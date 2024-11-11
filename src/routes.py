@@ -1,11 +1,11 @@
-from flask import Blueprint, request, render_template, jsonify
-from utils import (
-    fetch_transactions,
-    process_transaction_data,
-    calculate_totals,
-    plot_data,
-)
 import os
+from datetime import date, timedelta
+from flask import Blueprint, request, render_template
+from utils import (
+    plot_dashboard_bar,
+    fetch_transactions,
+)
+
 
 main_routes = Blueprint("main_routes", __name__)
 
@@ -25,30 +25,41 @@ ACCOUNT_IDS = {
     "GROCERIES": os.getenv("GROCERIES"),
     "PERSONAL_ACCOUNT": os.getenv("PERSONAL_ACCOUNT"),
     "RENT": os.getenv("RENT"),
+    "2UP": os.getenv("2UP"),
 }
 
 
 @main_routes.route("/", methods=["GET", "POST"])
 def index():
+    # default on GET
+    selected_account_name = "2UP"
+
     if request.method == "POST":
-        account_name = request.form["account_name"]
-        feature_choice = request.form["feature_choice"]
-        plot_type = request.form["plot_type"]
-        since = request.form["since"]
-        until = request.form["until"]
+        since = request.form.get("since")
+        until = request.form.get("until")
+        selected_account_name = request.form.get("account")
+    else:
+        since = (date.today() - timedelta(days=8)).strftime("%Y-%m-%d")
+        until = date.today().strftime("%Y-%m-%d")
 
-        account_id = ACCOUNT_IDS.get(account_name)
-        if not account_id:
-            return jsonify({"error": "Invalid account name"})
+    ACCOUNT_ID = ACCOUNT_IDS.get(
+        selected_account_name, os.getenv(selected_account_name)
+    )
 
-        transaction_data = fetch_transactions(account_id, since, until)
-        if "error" in transaction_data:
-            return jsonify(transaction_data)
+    accounts_data = fetch_transactions(
+        ACCOUNT_ID, f"{since}T00:00:00+10:00", f"{until}T23:59:59+10:00"
+    )
 
-        df = process_transaction_data(transaction_data)
-        if feature_choice == "totals":
-            calculate_totals(df, account_name)
-        elif feature_choice == "plot":
-            plot_data(df, plot_type, account_name)
+    bar_chart_html = plot_dashboard_bar(accounts_data, selected_account_name)
 
-    return render_template("index.html", accounts=ACCOUNT_IDS)
+    account_names = list(ACCOUNT_IDS.keys())
+
+    return render_template(
+        "index.html",
+        accounts_data=accounts_data,
+        bar_chart_html=bar_chart_html,
+        default_since=since,
+        default_until=until,
+        account_names=account_names,
+        selected_account_name=selected_account_name,
+    )
