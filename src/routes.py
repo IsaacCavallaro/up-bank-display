@@ -31,6 +31,7 @@ ACCOUNT_IDS = {
 
 @main_routes.route("/", methods=["GET", "POST"])
 def index():
+    # default on GET
     selected_account_name = "2UP"
 
     if request.method == "POST":
