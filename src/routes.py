@@ -1,3 +1,4 @@
+# routes.py
 import os
 from datetime import date, timedelta
 from flask import Blueprint, request, render_template
@@ -5,7 +6,7 @@ from src.utils import (
     plot_dashboard_bar,
     fetch_transactions,
 )
-from src.config import ACCOUNT_IDS
+from src.config import ACCOUNT_IDS, CATEGORIES
 
 
 main_routes = Blueprint("main_routes", __name__)
@@ -50,4 +51,5 @@ def index():
         selected_account_name=selected_account_name,
         selected_category=category,
         all_accounts=all_accounts,
+        categories=CATEGORIES,
     )
