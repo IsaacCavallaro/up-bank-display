@@ -6,6 +6,8 @@ import matplotlib
 matplotlib.use("Agg")  # Use non-GUI backend for matplotlib
 import matplotlib.pyplot as plt
 import plotly.express as px
+from src.config import ACCOUNT_IDS
+
 
 ACCESS_TOKEN = os.getenv("UP_API_TOKEN")
 
@@ -17,34 +19,64 @@ def check_access_token():
         )
 
 
-def fetch_transactions(account_id, since, until):
-    url = f"https://api.up.com.au/api/v1/accounts/{account_id}/transactions"
+def fetch_transactions(
+    account_id=None, since=None, until=None, parent_category=None, all_accounts=False
+):
+    accounts_to_fetch = [account_id] if not all_accounts else ACCOUNT_IDS.values()
     headers = {
         "Authorization": f"Bearer {ACCESS_TOKEN}",
         "Content-Type": "application/json",
     }
 
-    # Prepare parameters for the initial request
-    params = {
-        "filter[since]": since if since else None,
-        "filter[until]": until if until else None,
-        "page[size]": 100,  # Adjust the page size if needed
-    }
-
     all_transactions = []
 
-    while url:
-        response = requests.get(url, headers=headers, params=params)
+    for account in accounts_to_fetch:
+        url = f"https://api.up.com.au/api/v1/accounts/{account}/transactions"
+        params = {
+            "filter[since]": since if since else None,
+            "filter[until]": until if until else None,
+            "page[size]": 100,
+        }
 
-        if response.status_code == 200:
-            data = response.json()
-            all_transactions.extend(data["data"])
+        while url:
+            response = requests.get(url, headers=headers, params=params)
 
-            # Check if there's a next page
-            url = data["links"].get("next", None)
-            params = {}
-        else:
-            return {"error": "Failed to retrieve data"}
+            if response.status_code == 200:
+                data = response.json()
+                transactions = data["data"]
+
+                # Process each transaction to check if it matches the parent category
+                for transaction in transactions:
+                    transaction_id = transaction.get("id")
+                    category_info = (
+                        transaction.get("relationships", {})
+                        .get("category", {})
+                        .get("data")
+                    )
+                    parent_category_info = (
+                        transaction.get("relationships", {})
+                        .get("parentCategory", {})
+                        .get("data")
+                    )
+
+                    # Check if the transaction belongs to the parent category or its child
+                    if parent_category and (
+                        (
+                            parent_category_info
+                            and parent_category_info["id"] == parent_category
+                        )
+                        or (category_info and category_info["id"] == parent_category)
+                    ):
+                        all_transactions.append(transaction)
+                    elif not parent_category:
+                        all_transactions.append(transaction)
+
+                # Check if there's a next page; if not, exit the loop
+                url = data["links"].get("next", None)
+                params = {}  # Reset params for the next page
+            else:
+                print("Error:", response.json())
+                return {"error": "Failed to retrieve data"}
 
     return {"transactions": all_transactions}
 
@@ -66,18 +98,18 @@ def fetch_transactions(account_id, since, until):
 #         return {"error": "Failed to retrieve data"}
 
 
-def fetch_accounts():
-    url = "https://api.up.com.au/api/v1/accounts"
-    headers = {
-        "Authorization": f"Bearer {ACCESS_TOKEN}",
-        "Content-Type": "application/json",
-    }
+# def fetch_accounts():
+#     url = "https://api.up.com.au/api/v1/accounts"
+#     headers = {
+#         "Authorization": f"Bearer {ACCESS_TOKEN}",
+#         "Content-Type": "application/json",
+#     }
 
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json()["data"]
-    else:
-        return []
+#     response = requests.get(url, headers=headers)
+#     if response.status_code == 200:
+#         return response.json()["data"]
+#     else:
+#         return []
 
 
 def process_transaction_data(transaction_data):

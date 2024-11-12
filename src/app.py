@@ -1,7 +1,7 @@
 from flask import Flask
-from routes import main_routes
+from src.routes import main_routes
 from dotenv import load_dotenv
-from utils import check_access_token
+from src.utils import check_access_token
 
 
 load_dotenv()
