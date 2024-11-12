@@ -20,7 +20,12 @@ def check_access_token():
 
 
 def fetch_transactions(
-    account_id=None, since=None, until=None, parent_category=None, all_accounts=False
+    account_id=None,
+    since=None,
+    until=None,
+    parent_category=None,
+    description=None,
+    all_accounts=False,
 ):
     accounts_to_fetch = [account_id] if not all_accounts else ACCOUNT_IDS.values()
     headers = {
@@ -45,7 +50,6 @@ def fetch_transactions(
                 data = response.json()
                 transactions = data["data"]
 
-                # Process each transaction to check if it matches the parent category
                 for transaction in transactions:
                     transaction_id = transaction.get("id")
                     category_info = (
@@ -59,19 +63,26 @@ def fetch_transactions(
                         .get("data")
                     )
 
-                    # Check if the transaction belongs to the parent category or its child
-                    if parent_category and (
+                    category_match = not parent_category or (
                         (
                             parent_category_info
                             and parent_category_info["id"] == parent_category
                         )
                         or (category_info and category_info["id"] == parent_category)
-                    ):
-                        all_transactions.append(transaction)
-                    elif not parent_category:
+                    )
+
+                    description_match = not description or (
+                        description.replace(" ", "").strip().lower()
+                        in transaction.get("attributes", {})
+                        .get("description", "")
+                        .replace(" ", "")
+                        .strip()
+                        .lower()
+                    )
+
+                    if category_match and description_match:
                         all_transactions.append(transaction)
 
-                # Check if there's a next page; if not, exit the loop
                 url = data["links"].get("next", None)
                 params = {}  # Reset params for the next page
             else:
