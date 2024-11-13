@@ -5,9 +5,34 @@ from src.utils import (
     plot_dashboard_bar,
     fetch_transactions,
 )
-from src.config import ACCOUNT_IDS, CATEGORIES
+from src.config import ACCOUNT_IDS, CATEGORIES, NOTION_API_KEY, DATABASE_ID
+import requests
 
 main_routes = Blueprint("main_routes", __name__)
+
+
+def push_to_notion(transaction_data):
+    url = "https://api.notion.com/v1/pages"
+
+    headers = {
+        "Authorization": f"Bearer {NOTION_API_KEY}",
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+    }
+
+    data = {
+        "parent": {"database_id": DATABASE_ID},
+        "properties": {
+            "Name": {"title": [{"text": {"content": transaction_data["description"]}}]},
+        },
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+
+    if response.status_code == 200:
+        print("Successfully pushed data to Notion")
+    else:
+        print("Failed to push data:", response.json())
 
 
 @main_routes.route("/", methods=["GET", "POST"])
@@ -41,6 +66,12 @@ def index():
 
     bar_chart_html = plot_dashboard_bar(accounts_data, selected_account_name)
     account_names = list(ACCOUNT_IDS.keys())
+
+    for transaction in accounts_data["transactions"]:
+        transaction_data = {
+            "description": transaction["attributes"]["description"],
+        }
+        push_to_notion(transaction_data)
 
     return render_template(
         "index.html",
