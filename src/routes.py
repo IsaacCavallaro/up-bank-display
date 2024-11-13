@@ -20,10 +20,18 @@ def push_to_notion(transaction_data):
         "Content-Type": "application/json",
     }
 
+    amount = transaction_data.get("amount")
+    if isinstance(amount, str):
+        try:
+            amount = float(amount)
+        except ValueError:
+            amount = None
+
     data = {
         "parent": {"database_id": DATABASE_ID},
         "properties": {
             "Name": {"title": [{"text": {"content": transaction_data["description"]}}]},
+            "Amount": {"number": amount},
         },
     }
 
@@ -70,6 +78,7 @@ def index():
     for transaction in accounts_data["transactions"]:
         transaction_data = {
             "description": transaction["attributes"]["description"],
+            "amount": transaction["attributes"]["amount"]["value"],
         }
         push_to_notion(transaction_data)
 
