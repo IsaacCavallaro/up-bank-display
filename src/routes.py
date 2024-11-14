@@ -7,6 +7,7 @@ from src.utils import (
 )
 from src.config import ACCOUNT_IDS, CATEGORIES, NOTION_API_KEY, DATABASE_ID
 import requests
+from datetime import datetime
 
 main_routes = Blueprint("main_routes", __name__)
 
@@ -27,13 +28,27 @@ def push_to_notion(transaction_data):
         except ValueError:
             amount = None
 
+    created_at = transaction_data.get("createdAt")
+    if isinstance(created_at, str):
+        try:
+            created_at = datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%S%z")
+        except ValueError:
+            created_at = None
+
     data = {
         "parent": {"database_id": DATABASE_ID},
         "properties": {
             "Name": {"title": [{"text": {"content": transaction_data["description"]}}]},
             "Amount": {"number": amount},
+            "createdAt": {
+                "date": {"start": (created_at.isoformat() if created_at else None)}
+            },
         },
     }
+
+    if created_at is None:
+        print("Invalid 'createdAt' format:", transaction_data.get("createdAt"))
+        return
 
     response = requests.post(url, headers=headers, json=data)
 
@@ -75,12 +90,14 @@ def index():
     bar_chart_html = plot_dashboard_bar(accounts_data, selected_account_name)
     account_names = list(ACCOUNT_IDS.keys())
 
-    for transaction in accounts_data["transactions"]:
-        transaction_data = {
-            "description": transaction["attributes"]["description"],
-            "amount": transaction["attributes"]["amount"]["value"],
-        }
-        push_to_notion(transaction_data)
+    if request.method == "POST":
+        for transaction in accounts_data["transactions"]:
+            transaction_data = {
+                "description": transaction["attributes"]["description"],
+                "amount": transaction["attributes"]["amount"]["value"],
+                "createdAt": transaction["attributes"]["createdAt"],
+            }
+            push_to_notion(transaction_data)
 
     return render_template(
         "index.html",

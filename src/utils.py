@@ -70,7 +70,6 @@ def fetch_transactions(
                         )
                         or (category_info and category_info["id"] == parent_category)
                     )
-
                     description_match = not description or (
                         description.replace(" ", "").strip().lower()
                         in transaction.get("attributes", {})
