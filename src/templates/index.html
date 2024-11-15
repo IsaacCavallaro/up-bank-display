@@ -75,6 +75,13 @@
                 name="all_accounts"
                 {% if all_accounts %}checked{% endif %}
             >
+            <label for="send_to_notion" class="mr-2">Send to Notion:</label>
+            <input
+                type="checkbox"
+                id="send_to_notion"
+                name="send_to_notion"
+                {% if send_to_notion %}checked{% endif %}
+            >
 
             <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Update</button>
         </form>
