@@ -67,7 +67,7 @@ def index():
     if request.method == "POST":
         since = request.form.get("since")
         until = request.form.get("until")
-        selected_account_name = request.form.get("account")
+        selected_accounts = request.form.getlist("account[]")  # Retrieve as a list
         category = request.form.get("category")
         description = request.form.get("description")
         min_amount = request.form.get("min_amount", type=float)
@@ -77,15 +77,20 @@ def index():
     else:
         since = (date.today() - timedelta(days=8)).strftime("%Y-%m-%d")
         until = date.today().strftime("%Y-%m-%d")
+        selected_accounts = [selected_account_name]  # Default to a single account
         category = None
         description = None
         min_amount = None
         max_amount = None
 
-    ACCOUNT_ID = ACCOUNT_IDS.get(selected_account_name) if not all_accounts else None
+    account_ids = (
+        [ACCOUNT_IDS[acc] for acc in selected_accounts if acc in ACCOUNT_IDS]
+        if not all_accounts
+        else None
+    )
 
     accounts_data = fetch_transactions(
-        account_id=ACCOUNT_ID,
+        account_id=account_ids,
         since=f"{since}T00:00:00+10:00",
         until=f"{until}T23:59:59+10:00",
         parent_category=category,
@@ -95,7 +100,8 @@ def index():
         all_accounts=all_accounts,
     )
 
-    bar_chart_html = plot_dashboard_bar(accounts_data, selected_account_name)
+    bar_chart_html = plot_dashboard_bar(accounts_data, ", ".join(selected_accounts))
+
     account_names = list(ACCOUNT_IDS.keys())
 
     if request.method == "POST" and send_to_notion:
@@ -114,7 +120,7 @@ def index():
         default_since=since,
         default_until=until,
         account_names=account_names,
-        selected_account_name=selected_account_name,
+        selected_accounts=selected_accounts,
         selected_category=category,
         send_to_notion=send_to_notion,
         all_accounts=all_accounts,

@@ -56,17 +56,18 @@
                 placeholder="Enter maximum amount"
             >
 
-            <label for="account" class="mr-2">Account:</label>
+            <label for="account" class="mr-2">Accounts:</label>
             <select
                 id="account"
-                name="account"
+                name="account[]"
                 class="border rounded p-1 mr-4"
-                required
+                multiple
             >
                 {% for account_name in account_names %}
-                    <option value="{{ account_name }}" {% if account_name == selected_account %}selected{% endif %}>{{ account_name }}</option>
+                    <option value="{{ account_name }}" {% if account_name in selected_accounts %}selected{% endif %}>{{ account_name }}</option>
                 {% endfor %}
             </select>
+
 
             <label for="category" class="mr-2">Category:</label>
             <select

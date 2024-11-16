@@ -29,7 +29,9 @@ def fetch_transactions(
     min_amount=None,
     max_amount=None,
 ):
-    accounts_to_fetch = [account_id] if not all_accounts else ACCOUNT_IDS.values()
+    accounts_to_fetch = (
+        account_id if account_id else ACCOUNT_IDS.values() if all_accounts else []
+    )
     headers = {
         "Authorization": f"Bearer {ACCESS_TOKEN}",
         "Content-Type": "application/json",
