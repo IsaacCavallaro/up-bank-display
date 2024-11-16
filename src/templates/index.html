@@ -15,6 +15,7 @@
 
         <!-- Date range selection form -->
         <form method="POST" action="/" class="text-center mb-4">
+            <!-- Date range inputs -->
             <label for="since" class="mr-2">From:</label>
             <input
                 type="date"
@@ -34,6 +35,8 @@
                 class="border rounded p-1 mr-4"
                 required
             >
+
+            <!-- Min and Max Amount -->
             <label for="min_amount" class="mr-2">Min Amount:</label>
             <input
                 type="number"
@@ -56,6 +59,7 @@
                 placeholder="Enter maximum amount"
             >
 
+            <!-- Accounts multi-select -->
             <div class="accounts">
                 <label for="account" class="block mb-2 font-bold">Accounts:</label>
                 <select
@@ -84,18 +88,36 @@
                     {% endif %}
                 </div>
             </div>
-            <label for="category" class="mr-2">Category:</label>
-            <select
-                id="category"
-                name="category"
-                class="border rounded p-1 mr-4"
-            >
-                <option value="">All</option>
-                {% for category in categories %}
-                    <option value="{{ category }}" {% if category == selected_category %}selected{% endif %}>{{ category.capitalize() }}</option>
-                {% endfor %}
-            </select>
 
+            <!-- Categories multi-select -->
+            <div class="categories mt-4">
+                <label for="category" class="block mb-2 font-bold">Categories:</label>
+                <select
+                    id="category"
+                    name="category[]"
+                    class="border rounded p-1 w-60"
+                    multiple
+                    size="5"
+                >
+                    {% for category in categories %}
+                        <option value="{{ category }}" {% if category in selected_categories %}selected{% endif %}>
+                            {{ category }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <div id="selected-categories" class="mt-2 text-sm">
+                    {% if selected_categories %}
+                        <p>Selected Categories:</p>
+                        <ul>
+                            {% for category in selected_categories %}
+                                <li class="text-green-500">{{ category }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-gray-500">No categories selected.</p>
+                    {% endif %}
+                </div>
+            </div>
             <label for="description" class="mr-2">Description:</label>
             <input
                 type="text"
@@ -105,6 +127,7 @@
                 class="border rounded p-1 mr-4"
                 placeholder="Enter description"
             >
+
             <label for="all_accounts" class="mr-2">All Accounts:</label>
             <input
                 type="checkbox"
@@ -112,6 +135,7 @@
                 name="all_accounts"
                 {% if all_accounts %}checked{% endif %}
             >
+
             <label for="send_to_notion" class="mr-2">To Notion:</label>
             <input
                 type="checkbox"

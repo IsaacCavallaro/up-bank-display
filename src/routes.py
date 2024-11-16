@@ -67,8 +67,8 @@ def index():
     if request.method == "POST":
         since = request.form.get("since")
         until = request.form.get("until")
-        selected_accounts = request.form.getlist("account[]")  # Retrieve as a list
-        category = request.form.get("category")
+        selected_accounts = request.form.getlist("account[]")
+        selected_categories = request.form.getlist("category[]")
         description = request.form.get("description")
         min_amount = request.form.get("min_amount", type=float)
         max_amount = request.form.get("max_amount", type=float)
@@ -77,8 +77,8 @@ def index():
     else:
         since = (date.today() - timedelta(days=8)).strftime("%Y-%m-%d")
         until = date.today().strftime("%Y-%m-%d")
-        selected_accounts = [selected_account_name]  # Default to a single account
-        category = None
+        selected_accounts = [selected_account_name]
+        selected_categories = []
         description = None
         min_amount = None
         max_amount = None
@@ -93,7 +93,7 @@ def index():
         account_id=account_ids,
         since=f"{since}T00:00:00+10:00",
         until=f"{until}T23:59:59+10:00",
-        parent_category=category,
+        parent_category=selected_categories,
         description=description,
         min_amount=min_amount,
         max_amount=max_amount,
@@ -121,7 +121,7 @@ def index():
         default_until=until,
         account_names=account_names,
         selected_accounts=selected_accounts,
-        selected_category=category,
+        selected_categories=selected_categories,
         send_to_notion=send_to_notion,
         all_accounts=all_accounts,
         description=description,

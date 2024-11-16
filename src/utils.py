@@ -67,13 +67,13 @@ def fetch_transactions(
                         .get("data")
                     )
 
-                    # Check if category matches
-                    category_match = not parent_category or (
+                    # Check if category matches any of the selected categories
+                    category_match = not parent_category or any(
                         (
-                            parent_category_info
-                            and parent_category_info["id"] == parent_category
+                            (parent_category_info and parent_category_info["id"] == cat)
+                            or (category_info and category_info["id"] == cat)
                         )
-                        or (category_info and category_info["id"] == parent_category)
+                        for cat in parent_category
                     )
 
                     # Check if description matches
