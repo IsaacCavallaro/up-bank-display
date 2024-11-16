@@ -34,6 +34,27 @@
                 class="border rounded p-1 mr-4"
                 required
             >
+            <label for="min_amount" class="mr-2">Min Amount:</label>
+            <input
+                type="number"
+                id="min_amount"
+                name="min_amount"
+                step="0.01"
+                value="{{ min_amount if min_amount is not none else '' }}"
+                class="border rounded p-1 mr-4"
+                placeholder="Enter minimum amount"
+            >
+
+            <label for="max_amount" class="mr-2">Max Amount:</label>
+            <input
+                type="number"
+                id="max_amount"
+                name="max_amount"
+                step="0.01"
+                value="{{ max_amount if max_amount is not none else '' }}"
+                class="border rounded p-1 mr-4"
+                placeholder="Enter maximum amount"
+            >
 
             <label for="account" class="mr-2">Account:</label>
             <select

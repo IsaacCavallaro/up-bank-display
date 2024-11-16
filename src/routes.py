@@ -70,6 +70,8 @@ def index():
         selected_account_name = request.form.get("account")
         category = request.form.get("category")
         description = request.form.get("description")
+        min_amount = request.form.get("min_amount", type=float)
+        max_amount = request.form.get("max_amount", type=float)
         all_accounts = request.form.get("all_accounts") == "on"
         send_to_notion = request.form.get("send_to_notion") == "on"
     else:
@@ -77,6 +79,8 @@ def index():
         until = date.today().strftime("%Y-%m-%d")
         category = None
         description = None
+        min_amount = None
+        max_amount = None
 
     ACCOUNT_ID = ACCOUNT_IDS.get(selected_account_name) if not all_accounts else None
 
@@ -86,6 +90,8 @@ def index():
         until=f"{until}T23:59:59+10:00",
         parent_category=category,
         description=description,
+        min_amount=min_amount,
+        max_amount=max_amount,
         all_accounts=all_accounts,
     )
 
@@ -113,5 +119,7 @@ def index():
         send_to_notion=send_to_notion,
         all_accounts=all_accounts,
         description=description,
+        min_amount=min_amount,
+        max_amount=max_amount,
         categories=CATEGORIES,
     )
