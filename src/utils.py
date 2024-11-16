@@ -26,6 +26,8 @@ def fetch_transactions(
     parent_category=None,
     description=None,
     all_accounts=False,
+    min_amount=None,
+    max_amount=None,
 ):
     accounts_to_fetch = [account_id] if not all_accounts else ACCOUNT_IDS.values()
     headers = {
@@ -63,6 +65,7 @@ def fetch_transactions(
                         .get("data")
                     )
 
+                    # Check if category matches
                     category_match = not parent_category or (
                         (
                             parent_category_info
@@ -70,6 +73,8 @@ def fetch_transactions(
                         )
                         or (category_info and category_info["id"] == parent_category)
                     )
+
+                    # Check if description matches
                     description_match = not description or (
                         description.replace(" ", "").strip().lower()
                         in transaction.get("attributes", {})
@@ -79,7 +84,22 @@ def fetch_transactions(
                         .lower()
                     )
 
-                    if category_match and description_match:
+                    # Check if amount is within the specified range
+                    amount = (
+                        transaction.get("attributes", {})
+                        .get("amount", {})
+                        .get("value", None)
+                    )
+                    amount_match = True
+                    if amount is not None:
+                        amount = float(amount)
+                        if min_amount is not None and amount < min_amount:
+                            amount_match = False
+                        if max_amount is not None and amount > max_amount:
+                            amount_match = False
+
+                    # Include transaction if all conditions match
+                    if category_match and description_match and amount_match:
                         all_transactions.append(transaction)
 
                 url = data["links"].get("next", None)
