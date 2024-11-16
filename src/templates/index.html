@@ -56,19 +56,34 @@
                 placeholder="Enter maximum amount"
             >
 
-            <label for="account" class="mr-2">Accounts:</label>
-            <select
-                id="account"
-                name="account[]"
-                class="border rounded p-1 mr-4"
-                multiple
-            >
-                {% for account_name in account_names %}
-                    <option value="{{ account_name }}" {% if account_name in selected_accounts %}selected{% endif %}>{{ account_name }}</option>
-                {% endfor %}
-            </select>
-
-
+            <div class="accounts">
+                <label for="account" class="block mb-2 font-bold">Accounts:</label>
+                <select
+                    id="account"
+                    name="account[]"
+                    class="border rounded p-1 w-60"
+                    multiple
+                    size="5"
+                >
+                    {% for account_name in account_names %}
+                        <option value="{{ account_name }}" {% if account_name in selected_accounts %}selected{% endif %}>
+                            {{ account_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <div id="selected-accounts" class="mt-2 text-sm">
+                    {% if selected_accounts %}
+                        <p>Selected Accounts:</p>
+                        <ul>
+                            {% for account in selected_accounts %}
+                                <li class="text-blue-500">{{ account }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-gray-500">No accounts selected.</p>
+                    {% endif %}
+                </div>
+            </div>
             <label for="category" class="mr-2">Category:</label>
             <select
                 id="category"
@@ -97,7 +112,7 @@
                 name="all_accounts"
                 {% if all_accounts %}checked{% endif %}
             >
-            <label for="send_to_notion" class="mr-2">Send to Notion:</label>
+            <label for="send_to_notion" class="mr-2">To Notion:</label>
             <input
                 type="checkbox"
                 id="send_to_notion"
