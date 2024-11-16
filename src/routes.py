@@ -5,15 +5,64 @@ from src.utils import (
     plot_dashboard_bar,
     fetch_transactions,
 )
-from src.config import ACCOUNT_IDS, CATEGORIES
+from src.config import ACCOUNT_IDS, CATEGORIES, NOTION_API_KEY, DATABASE_ID
+import requests
+from datetime import datetime
 
 main_routes = Blueprint("main_routes", __name__)
+
+
+def push_to_notion(transaction_data):
+    url = "https://api.notion.com/v1/pages"
+
+    headers = {
+        "Authorization": f"Bearer {NOTION_API_KEY}",
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+    }
+
+    amount = transaction_data.get("amount")
+    if isinstance(amount, str):
+        try:
+            amount = float(amount)
+        except ValueError:
+            amount = None
+
+    created_at = transaction_data.get("createdAt")
+    if created_at is None:
+        print("Invalid 'createdAt' format:", transaction_data.get("createdAt"))
+        return
+
+    if isinstance(created_at, str):
+        try:
+            created_at = datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%S%z")
+        except ValueError:
+            created_at = None
+
+    data = {
+        "parent": {"database_id": DATABASE_ID},
+        "properties": {
+            "Name": {"title": [{"text": {"content": transaction_data["description"]}}]},
+            "Amount": {"number": amount},
+            "createdAt": {
+                "date": {"start": (created_at.isoformat() if created_at else None)}
+            },
+        },
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+
+    if response.status_code == 200:
+        print("Successfully pushed data to Notion")
+    else:
+        print("Failed to push data:", response.json())
 
 
 @main_routes.route("/", methods=["GET", "POST"])
 def index():
     selected_account_name = "2UP"
     all_accounts = False
+    send_to_notion = False
 
     if request.method == "POST":
         since = request.form.get("since")
@@ -22,6 +71,7 @@ def index():
         category = request.form.get("category")
         description = request.form.get("description")
         all_accounts = request.form.get("all_accounts") == "on"
+        send_to_notion = request.form.get("send_to_notion") == "on"
     else:
         since = (date.today() - timedelta(days=8)).strftime("%Y-%m-%d")
         until = date.today().strftime("%Y-%m-%d")
@@ -42,6 +92,15 @@ def index():
     bar_chart_html = plot_dashboard_bar(accounts_data, selected_account_name)
     account_names = list(ACCOUNT_IDS.keys())
 
+    if request.method == "POST" and send_to_notion:
+        for transaction in accounts_data["transactions"]:
+            transaction_data = {
+                "description": transaction["attributes"]["description"],
+                "amount": transaction["attributes"]["amount"]["value"],
+                "createdAt": transaction["attributes"]["createdAt"],
+            }
+            push_to_notion(transaction_data)
+
     return render_template(
         "index.html",
         accounts_data=accounts_data,
@@ -51,6 +110,7 @@ def index():
         account_names=account_names,
         selected_account_name=selected_account_name,
         selected_category=category,
+        send_to_notion=send_to_notion,
         all_accounts=all_accounts,
         description=description,
         categories=CATEGORIES,
