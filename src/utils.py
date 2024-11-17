@@ -21,6 +21,25 @@ def check_access_token():
         )
 
 
+def is_category_match(category_info, parent_category_info, parent_category):
+    if not parent_category:
+        return True
+    return any(
+        (parent_category_info and parent_category_info["id"] == cat)
+        or (category_info and category_info["id"] == cat)
+        for cat in parent_category
+    )
+
+
+def is_description_match(transaction_description, description):
+    if not description:
+        return True
+    return (
+        description.replace(" ", "").strip().lower()
+        in transaction_description.replace(" ", "").strip()
+    )
+
+
 def fetch_transactions(
     account_id=None,
     since=None,
@@ -76,21 +95,6 @@ def fetch_transactions(
                         .get("data")
                     )
 
-                    # Check if category matches any of the selected categories
-                    category_match = not parent_category or any(
-                        (
-                            (parent_category_info and parent_category_info["id"] == cat)
-                            or (category_info and category_info["id"] == cat)
-                        )
-                        for cat in parent_category
-                    )
-
-                    # Check if description matches
-                    description_match = not description or (
-                        description.replace(" ", "").strip().lower()
-                        in transaction_description.replace(" ", "").strip()
-                    )
-
                     # Check if amount is within the specified range
                     amount = (
                         transaction.get("attributes", {})
@@ -127,8 +131,10 @@ def fetch_transactions(
 
                     # Include transaction if all conditions match
                     if (
-                        category_match
-                        and description_match
+                        is_category_match(
+                            category_info, parent_category_info, parent_category
+                        )
+                        and is_description_match(transaction_description, description)
                         and amount_match
                         and food_match
                     ):
