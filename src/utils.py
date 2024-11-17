@@ -38,8 +38,9 @@ def fetch_transactions(
         "Content-Type": "application/json",
     }
 
-    # food_keywords = ["doordash", "uber eats", "woolworths", "coles"]
-    food_keywords = ["doordash", "uber eats"]
+    food_keywords = ["coles", "woolworths"]
+    food_child_categories = {"restaurants-and-cafes", "takeaway"}
+    food_parent_category = "good-life"
     all_transactions = []
 
     for account in accounts_to_fetch:
@@ -69,7 +70,7 @@ def fetch_transactions(
                     )
                     parent_category_info = (
                         transaction.get("relationships", {})
-                        .get("parentCategory", {})
+                        .get("parent", {})
                         .get("data")
                     )
 
@@ -103,8 +104,23 @@ def fetch_transactions(
                             amount_match = False
 
                     # Check if it's food-related
-                    food_match = not food_related or any(
-                        keyword in transaction_description for keyword in food_keywords
+                    food_match = (
+                        not food_related
+                        or any(
+                            keyword in transaction_description
+                            for keyword in food_keywords
+                        )
+                        or (
+                            category_info
+                            and (
+                                category_info["id"] in food_child_categories
+                                or (
+                                    parent_category_info
+                                    and parent_category_info["id"]
+                                    == food_parent_category
+                                )
+                            )
+                        )
                     )
 
                     # Include transaction if all conditions match
