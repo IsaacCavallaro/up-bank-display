@@ -28,6 +28,7 @@ def fetch_transactions(
     all_accounts=False,
     min_amount=None,
     max_amount=None,
+    food_related=False,
 ):
     accounts_to_fetch = (
         account_id if account_id else ACCOUNT_IDS.values() if all_accounts else []
@@ -37,6 +38,8 @@ def fetch_transactions(
         "Content-Type": "application/json",
     }
 
+    # food_keywords = ["doordash", "uber eats", "woolworths", "coles"]
+    food_keywords = ["doordash", "uber eats"]
     all_transactions = []
 
     for account in accounts_to_fetch:
@@ -55,6 +58,9 @@ def fetch_transactions(
                 transactions = data["data"]
 
                 for transaction in transactions:
+                    transaction_description = (
+                        transaction.get("attributes", {}).get("description", "").lower()
+                    )
                     transaction_id = transaction.get("id")
                     category_info = (
                         transaction.get("relationships", {})
@@ -79,11 +85,7 @@ def fetch_transactions(
                     # Check if description matches
                     description_match = not description or (
                         description.replace(" ", "").strip().lower()
-                        in transaction.get("attributes", {})
-                        .get("description", "")
-                        .replace(" ", "")
-                        .strip()
-                        .lower()
+                        in transaction_description.replace(" ", "").strip()
                     )
 
                     # Check if amount is within the specified range
@@ -100,8 +102,18 @@ def fetch_transactions(
                         if max_amount is not None and amount > max_amount:
                             amount_match = False
 
+                    # Check if it's food-related
+                    food_match = not food_related or any(
+                        keyword in transaction_description for keyword in food_keywords
+                    )
+
                     # Include transaction if all conditions match
-                    if category_match and description_match and amount_match:
+                    if (
+                        category_match
+                        and description_match
+                        and amount_match
+                        and food_match
+                    ):
                         all_transactions.append(transaction)
 
                 url = data["links"].get("next", None)

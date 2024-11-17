@@ -63,6 +63,7 @@ def index():
     selected_account_name = "2UP"
     all_accounts = False
     send_to_notion = False
+    food_related = False
 
     if request.method == "POST":
         since = request.form.get("since")
@@ -74,6 +75,7 @@ def index():
         max_amount = request.form.get("max_amount", type=float)
         all_accounts = request.form.get("all_accounts") == "on"
         send_to_notion = request.form.get("send_to_notion") == "on"
+        food_related = request.form.get("food_related") == "on"
     else:
         since = (date.today() - timedelta(days=8)).strftime("%Y-%m-%d")
         until = date.today().strftime("%Y-%m-%d")
@@ -98,6 +100,7 @@ def index():
         min_amount=min_amount,
         max_amount=max_amount,
         all_accounts=all_accounts,
+        food_related=food_related,
     )
 
     bar_chart_html = plot_dashboard_bar(accounts_data, ", ".join(selected_accounts))
@@ -124,6 +127,7 @@ def index():
         selected_categories=selected_categories,
         send_to_notion=send_to_notion,
         all_accounts=all_accounts,
+        food_related=food_related,
         description=description,
         min_amount=min_amount,
         max_amount=max_amount,

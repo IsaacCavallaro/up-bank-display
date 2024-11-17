@@ -144,6 +144,15 @@
                 {% if send_to_notion %}checked{% endif %}
             >
 
+            <label for="food_related" class="mr-2">Food-Related:</label>
+            <input
+                type="checkbox"
+                id="food_related"
+                name="food_related"
+                {% if food_related %}checked{% endif %}
+            />
+
+
             <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Update</button>
         </form>
 
