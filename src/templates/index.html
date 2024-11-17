@@ -123,10 +123,11 @@
                 type="text"
                 id="description"
                 name="description"
-                value="{{ description }}"
+                value="{{ description if description is not none else '' }}"
                 class="border rounded p-1 mr-4"
                 placeholder="Enter description"
-            >
+            />
+
 
             <label for="all_accounts" class="mr-2">All Accounts:</label>
             <input
