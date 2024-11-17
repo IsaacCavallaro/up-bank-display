@@ -63,6 +63,19 @@ def is_food_match(
     )
 
 
+def is_amount_match(transaction, min_amount, max_amount):
+    amount = transaction.get("attributes", {}).get("amount", {}).get("value", None)
+    if amount is None:
+        return True
+
+    amount = float(amount)
+    if (min_amount is not None and amount < min_amount) or (
+        max_amount is not None and amount > max_amount
+    ):
+        return False
+    return True
+
+
 def fetch_transactions(
     account_id=None,
     since=None,
@@ -118,27 +131,13 @@ def fetch_transactions(
                         .get("data")
                     )
 
-                    # Check if amount is within the specified range
-                    amount = (
-                        transaction.get("attributes", {})
-                        .get("amount", {})
-                        .get("value", None)
-                    )
-                    amount_match = True
-                    if amount is not None:
-                        amount = float(amount)
-                        if min_amount is not None and amount < min_amount:
-                            amount_match = False
-                        if max_amount is not None and amount > max_amount:
-                            amount_match = False
-
                     # Include transaction if all conditions match
                     if (
                         is_category_match(
                             category_info, parent_category_info, parent_category
                         )
                         and is_description_match(transaction_description, description)
-                        and amount_match
+                        and is_amount_match(transaction, min_amount, max_amount)
                         and is_food_match(
                             transaction_description,
                             category_info,
