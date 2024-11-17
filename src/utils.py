@@ -40,6 +40,29 @@ def is_description_match(transaction_description, description):
     )
 
 
+def is_food_match(
+    transaction_description,
+    category_info,
+    parent_category_info,
+    food_related,
+    food_keywords,
+    food_child_categories,
+    food_parent_category,
+):
+    if not food_related:
+        return True
+    return any(keyword in transaction_description for keyword in food_keywords) or (
+        category_info
+        and (
+            category_info["id"] in food_child_categories
+            or (
+                parent_category_info
+                and parent_category_info["id"] == food_parent_category
+            )
+        )
+    )
+
+
 def fetch_transactions(
     account_id=None,
     since=None,
@@ -109,26 +132,6 @@ def fetch_transactions(
                         if max_amount is not None and amount > max_amount:
                             amount_match = False
 
-                    # Check if it's food-related
-                    food_match = (
-                        not food_related
-                        or any(
-                            keyword in transaction_description
-                            for keyword in food_keywords
-                        )
-                        or (
-                            category_info
-                            and (
-                                category_info["id"] in food_child_categories
-                                or (
-                                    parent_category_info
-                                    and parent_category_info["id"]
-                                    == food_parent_category
-                                )
-                            )
-                        )
-                    )
-
                     # Include transaction if all conditions match
                     if (
                         is_category_match(
@@ -136,7 +139,15 @@ def fetch_transactions(
                         )
                         and is_description_match(transaction_description, description)
                         and amount_match
-                        and food_match
+                        and is_food_match(
+                            transaction_description,
+                            category_info,
+                            parent_category_info,
+                            food_related,
+                            food_keywords,
+                            food_child_categories,
+                            food_parent_category,
+                        )
                     ):
                         all_transactions.append(transaction)
 
