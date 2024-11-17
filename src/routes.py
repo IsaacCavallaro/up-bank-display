@@ -4,58 +4,11 @@ from flask import Blueprint, request, render_template
 from src.utils import (
     plot_dashboard_bar,
     fetch_transactions,
+    push_to_notion,
 )
-from src.config import ACCOUNT_IDS, CATEGORIES, NOTION_API_KEY, DATABASE_ID
-import requests
-from datetime import datetime
+from src.config import ACCOUNT_IDS, CATEGORIES
 
 main_routes = Blueprint("main_routes", __name__)
-
-
-def push_to_notion(transaction_data):
-    url = "https://api.notion.com/v1/pages"
-
-    headers = {
-        "Authorization": f"Bearer {NOTION_API_KEY}",
-        "Notion-Version": "2022-06-28",
-        "Content-Type": "application/json",
-    }
-
-    amount = transaction_data.get("amount")
-    if isinstance(amount, str):
-        try:
-            amount = float(amount)
-        except ValueError:
-            amount = None
-
-    created_at = transaction_data.get("createdAt")
-    if created_at is None:
-        print("Invalid 'createdAt' format:", transaction_data.get("createdAt"))
-        return
-
-    if isinstance(created_at, str):
-        try:
-            created_at = datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%S%z")
-        except ValueError:
-            created_at = None
-
-    data = {
-        "parent": {"database_id": DATABASE_ID},
-        "properties": {
-            "Name": {"title": [{"text": {"content": transaction_data["description"]}}]},
-            "Amount": {"number": amount},
-            "createdAt": {
-                "date": {"start": (created_at.isoformat() if created_at else None)}
-            },
-        },
-    }
-
-    response = requests.post(url, headers=headers, json=data)
-
-    if response.status_code == 200:
-        print("Successfully pushed data to Notion")
-    else:
-        print("Failed to push data:", response.json())
 
 
 @main_routes.route("/", methods=["GET", "POST"])

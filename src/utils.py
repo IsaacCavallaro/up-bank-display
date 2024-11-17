@@ -6,7 +6,9 @@ import matplotlib
 matplotlib.use("Agg")  # Use non-GUI backend for matplotlib
 import matplotlib.pyplot as plt
 import plotly.express as px
-from src.config import ACCOUNT_IDS
+from src.config import ACCOUNT_IDS, NOTION_API_KEY, DATABASE_ID
+import requests
+from datetime import datetime
 
 
 ACCESS_TOKEN = os.getenv("UP_API_TOKEN")
@@ -139,6 +141,52 @@ def fetch_transactions(
                 return {"error": "Failed to retrieve data"}
 
     return {"transactions": all_transactions}
+
+
+def push_to_notion(transaction_data):
+    url = "https://api.notion.com/v1/pages"
+
+    headers = {
+        "Authorization": f"Bearer {NOTION_API_KEY}",
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+    }
+
+    amount = transaction_data.get("amount")
+    if isinstance(amount, str):
+        try:
+            amount = float(amount)
+        except ValueError:
+            amount = None
+
+    created_at = transaction_data.get("createdAt")
+    if created_at is None:
+        print("Invalid 'createdAt' format:", transaction_data.get("createdAt"))
+        return
+
+    if isinstance(created_at, str):
+        try:
+            created_at = datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%S%z")
+        except ValueError:
+            created_at = None
+
+    data = {
+        "parent": {"database_id": DATABASE_ID},
+        "properties": {
+            "Name": {"title": [{"text": {"content": transaction_data["description"]}}]},
+            "Amount": {"number": amount},
+            "createdAt": {
+                "date": {"start": (created_at.isoformat() if created_at else None)}
+            },
+        },
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+
+    if response.status_code == 200:
+        print("Successfully pushed data to Notion")
+    else:
+        print("Failed to push data:", response.json())
 
 
 # def fetch_transactions(account_id, since, until):
