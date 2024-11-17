@@ -1,6 +1,6 @@
 # Up Bank Transaction Plotting
 
-This project allows you to fetch, process, and visualise transaction data using various types of plots. It fetches transaction data from a given account and plots the data using either a bar plot, line plot, or pie plot.
+This project allows you to fetch, process, and visualise transaction data using various types of plots. It fetches transaction data from a given account and plots the data using either a bar plot, line plot, or pie plot. You can then post this data directory to your notion workspace.
 
 ## Requirements
 
@@ -25,9 +25,28 @@ curl -s -X GET \
   -H "Content-Type: application/json" | jq .
 ```
 
+## Example to get transactions from specified account
+
+```bash
+# Replace "your_access_token_here" with your actual access token
+ACCESS_TOKEN="your_access_token_here"
+
+# Make the GET request to retrieve transactions and pretty-print the response
+curl -s -X GET \
+  https://api.up.com.au/api/v1/accounts/{your-account-id}/transactions \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" | jq .
+```
+
 ## Up Bank API Documentation
 
 For details on how to interact with the Up API, please refer to the official documentation: [Up API Docs](https://developer.up.com.au/#welcome)
+
+---
+
+## Notion API Documentaion
+
+For details on how to interact with the Notion API, please refer to the official documentation: [Notion API Docs](https://developers.notion.com/)
 
 ---
 
