@@ -1,7 +1,7 @@
 import pytest
 from .app import check_up_token, check_notion_token
 from unittest.mock import Mock
-from .utils import fetch_transactions, calculate_totals
+from .utils import is_description_match, fetch_transactions, calculate_totals
 from unittest.mock import patch
 import pandas as pd
 
@@ -26,6 +26,25 @@ def test_notion_token_missing(monkeypatch):
         match="Please set the NOTION_API_KEY environment variable in your .env file.",
     ):
         check_notion_token()
+
+
+def test_is_description_match():
+    assert is_description_match("test", "test") is True
+    assert is_description_match("test", "TEST") is True
+    assert is_description_match("test description", "testdescription") is True
+    assert is_description_match("  test  ", "test") is True
+    # Test empty description (should match anything)
+    assert is_description_match("test", "") is True
+    assert is_description_match("", "") is True
+
+    # Test partial matches
+    assert is_description_match("this is a test description", "test") is True
+
+    # Test when description does not match
+    assert is_description_match("this is a test", "notfound") is False
+
+    # Test empty transaction description (should not match anything)
+    assert is_description_match("", "test") is False
 
 
 # def test_fetch_transactions_success(mocker):
