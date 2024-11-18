@@ -22,8 +22,6 @@ def check_access_token():
 
 
 def is_category_match(category_info, parent_category_info, parent_category):
-    if not parent_category:
-        return True
     return any(
         (parent_category_info and parent_category_info["id"] == cat)
         or (category_info and category_info["id"] == cat)
@@ -32,8 +30,6 @@ def is_category_match(category_info, parent_category_info, parent_category):
 
 
 def is_description_match(transaction_description, description):
-    if not description:
-        return True
     return (
         description.replace(" ", "").strip().lower()
         in transaction_description.replace(" ", "").strip()
@@ -44,13 +40,10 @@ def is_food_match(
     transaction_description,
     category_info,
     parent_category_info,
-    food_related,
     food_keywords,
     food_child_categories,
     food_parent_category,
 ):
-    if not food_related:
-        return True
     return any(keyword in transaction_description for keyword in food_keywords) or (
         category_info
         and (
@@ -69,11 +62,10 @@ def is_amount_match(transaction, min_amount, max_amount):
         return True
 
     amount = float(amount)
-    if (min_amount is not None and amount < min_amount) or (
-        max_amount is not None and amount > max_amount
-    ):
-        return False
-    return True
+    return not (
+        (min_amount is not None and amount < min_amount)
+        or (max_amount is not None and amount > max_amount)
+    )
 
 
 def fetch_transactions(
@@ -119,7 +111,6 @@ def fetch_transactions(
                     transaction_description = (
                         transaction.get("attributes", {}).get("description", "").lower()
                     )
-                    transaction_id = transaction.get("id")
                     category_info = (
                         transaction.get("relationships", {})
                         .get("category", {})
@@ -131,24 +122,36 @@ def fetch_transactions(
                         .get("data")
                     )
 
-                    # Include transaction if all conditions match
-                    if (
-                        is_category_match(
+                    # Evaluate conditions only when relevant
+                    if parent_category:
+                        if not is_category_match(
                             category_info, parent_category_info, parent_category
-                        )
-                        and is_description_match(transaction_description, description)
-                        and is_amount_match(transaction, min_amount, max_amount)
-                        and is_food_match(
+                        ):
+                            continue
+
+                    if description:
+                        if not is_description_match(
+                            transaction_description, description
+                        ):
+                            continue
+
+                    if min_amount is not None or max_amount is not None:
+                        if not is_amount_match(transaction, min_amount, max_amount):
+                            continue
+
+                    if food_related:
+                        if not is_food_match(
                             transaction_description,
                             category_info,
                             parent_category_info,
-                            food_related,
                             food_keywords,
                             food_child_categories,
                             food_parent_category,
-                        )
-                    ):
-                        all_transactions.append(transaction)
+                        ):
+                            continue
+
+                    # Add the transaction if it passes all checks
+                    all_transactions.append(transaction)
 
                 url = data["links"].get("next", None)
                 params = {}  # Reset params for the next page
