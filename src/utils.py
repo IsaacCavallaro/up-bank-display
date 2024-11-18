@@ -14,10 +14,17 @@ from datetime import datetime
 ACCESS_TOKEN = os.getenv("UP_API_TOKEN")
 
 
-def check_access_token():
+def check_up_token():
     if not os.getenv("UP_API_TOKEN"):
         raise ValueError(
             "Please set the UP_API_TOKEN environment variable in your .env file."
+        )
+
+
+def check_notion_token():
+    if not os.getenv("NOTION_API_KEY"):
+        raise ValueError(
+            "Please set the NOTION_API_KEY environment variable in your .env file."
         )
 
 
