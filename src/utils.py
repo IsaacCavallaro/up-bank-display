@@ -57,7 +57,7 @@ def is_food_match(
         category_info
         and (
             category_info["id"] in food_child_categories
-            or (
+            and (
                 parent_category_info
                 and parent_category_info["id"] == food_parent_category
             )
@@ -125,11 +125,13 @@ def fetch_transactions(
                         .get("category", {})
                         .get("data")
                     )
+                    print(category_info)
                     parent_category_info = (
                         transaction.get("relationships", {})
                         .get("parentCategory", {})
                         .get("data")
                     )
+                    print(parent_category_info)
 
                     # Evaluate conditions only when relevant
                     if parent_category:
