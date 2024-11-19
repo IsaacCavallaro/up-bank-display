@@ -5,6 +5,7 @@ from .utils import (
     is_description_match,
     is_category_match,
     is_food_match,
+    is_amount_match,
     fetch_transactions,
     calculate_totals,
 )
@@ -205,6 +206,28 @@ def test_is_food_match():
         )
         is False
     )
+
+
+def test_is_amount_match():
+    # within the range
+    transaction = {"attributes": {"amount": {"value": "50"}}}
+    assert is_amount_match(transaction, 30, 100) is True
+
+    # min_amount as None, but amount within range
+    transaction = {"attributes": {"amount": {"value": "100"}}}
+    assert is_amount_match(transaction, None, 100) is True
+
+    # max_amount as None, but amount within range
+    transaction = {"attributes": {"amount": {"value": "1000"}}}
+    assert is_amount_match(transaction, 30, None) is True
+
+    # amount below the min_amount
+    transaction = {"attributes": {"amount": {"value": "20"}}}
+    assert is_amount_match(transaction, 30, 100) is False
+
+    # Amount above the max_amount
+    transaction = {"attributes": {"amount": {"value": "150"}}}
+    assert is_amount_match(transaction, 30, 100) is False
 
 
 # def test_fetch_transactions_success(mocker):
