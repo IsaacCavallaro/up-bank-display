@@ -29,6 +29,8 @@ def check_notion_token():
 
 
 def is_category_match(category_info, parent_category_info, parent_category):
+    if not parent_category:
+        return False
     return any(
         (parent_category_info and parent_category_info["id"] == cat)
         or (category_info and category_info["id"] == cat)
@@ -125,7 +127,7 @@ def fetch_transactions(
                     )
                     parent_category_info = (
                         transaction.get("relationships", {})
-                        .get("parent", {})
+                        .get("parentCategory", {})
                         .get("data")
                     )
 
