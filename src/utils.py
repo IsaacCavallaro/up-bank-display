@@ -125,13 +125,11 @@ def fetch_transactions(
                         .get("category", {})
                         .get("data")
                     )
-                    print(category_info)
                     parent_category_info = (
                         transaction.get("relationships", {})
                         .get("parentCategory", {})
                         .get("data")
                     )
-                    print(parent_category_info)
 
                     # Evaluate conditions only when relevant
                     if parent_category:

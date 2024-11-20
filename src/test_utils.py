@@ -1,16 +1,20 @@
 import pytest
 from .app import check_up_token, check_notion_token
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 from .utils import (
     is_description_match,
     is_category_match,
     is_food_match,
     is_amount_match,
+    push_to_notion,
     fetch_transactions,
     calculate_totals,
 )
 from unittest.mock import patch
 import pandas as pd
+import os
+
+from .config import DATABASE_ID, NOTION_API_KEY
 
 
 # Token Tests
@@ -34,6 +38,66 @@ def test_notion_token_missing(monkeypatch):
         match="Please set the NOTION_API_KEY environment variable in your .env file.",
     ):
         check_notion_token()
+
+
+@pytest.fixture
+def mock_requests_post(mocker):
+    """Fixture to mock requests.post."""
+    return mocker.patch("requests.post")
+
+
+def test_push_to_notion_valid_data(mock_requests_post):
+    """Test push_to_notion with valid transaction data."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_requests_post.return_value = mock_response
+
+    transaction_data = {
+        "description": "Test Transaction",
+        "amount": "100.50",
+        "createdAt": "2024-11-19T12:34:56+0000",
+    }
+
+    push_to_notion(transaction_data)
+
+    # Ensure requests.post was called with correct data
+    expected_data = {
+        "parent": {"database_id": DATABASE_ID},
+        "properties": {
+            "Name": {"title": [{"text": {"content": "Test Transaction"}}]},
+            "Amount": {"number": 100.50},
+            "createdAt": {"date": {"start": "2024-11-19T12:34:56+00:00"}},
+        },
+    }
+
+    mock_requests_post.assert_called_once_with(
+        "https://api.notion.com/v1/pages",
+        headers={
+            "Authorization": f"Bearer {NOTION_API_KEY}",
+            "Notion-Version": "2022-06-28",
+            "Content-Type": "application/json",
+        },
+        json=expected_data,
+    )
+
+
+def test_push_to_notion_api_failure(mock_requests_post):
+    """Test push_to_notion when the API call fails."""
+    mock_response = MagicMock()
+    mock_response.status_code = 400
+    mock_response.json.return_value = {"error": "Invalid request"}
+    mock_requests_post.return_value = mock_response
+
+    transaction_data = {
+        "description": "Test Transaction",
+        "amount": "100.50",
+        "createdAt": "2024-11-19T12:34:56+0000",
+    }
+
+    push_to_notion(transaction_data)
+
+    # Ensure requests.post was called
+    assert mock_requests_post.called
 
 
 # Matching Test
