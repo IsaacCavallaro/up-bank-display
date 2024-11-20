@@ -8,12 +8,8 @@ from .utils import (
     is_amount_match,
     push_to_notion,
     fetch_transactions,
-    ACCESS_TOKEN,
 )
 from unittest.mock import patch
-import pandas as pd
-import os
-
 from .config import DATABASE_ID, NOTION_API_KEY
 
 
