@@ -108,7 +108,6 @@ def fetch_transactions(
             "filter[until]": until if until else None,
             "page[size]": 100,
         }
-
         while url:
             response = requests.get(url, headers=headers, params=params)
 

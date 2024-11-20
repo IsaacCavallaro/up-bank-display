@@ -8,7 +8,7 @@ from .utils import (
     is_amount_match,
     push_to_notion,
     fetch_transactions,
-    calculate_totals,
+    ACCESS_TOKEN,
 )
 from unittest.mock import patch
 import pandas as pd
@@ -294,33 +294,108 @@ def test_is_amount_match():
     assert is_amount_match(transaction, 30, 100) is False
 
 
-# def test_fetch_transactions_success(mocker):
-#     mock_response = Mock()
-#     mock_response.status_code = 200
-#     mock_response.json.return_value = {"transactions": [{"id": "1", "amount": 100}]}
-#     mocker.patch("requests.get", return_value=mock_response)
-#     result = fetch_transactions("1234", since="2024-01-01", until="2024-12-31")
-#     assert result == {"transactions": [{"id": "1", "amount": 100}]}
-#     mock_response.json.assert_called_once()  # Ensure json() was called
+@pytest.fixture
+def mock_requests_get(mocker):
+    """Fixture to mock requests.get."""
+    return mocker.patch("requests.get")
 
 
-# def test_fetch_transactions_failure(mocker):
-#     mock_response = Mock()
-#     mock_response.status_code = 400
-#     mock_response.text = "Bad Request"
-#     mocker.patch("requests.get", return_value=mock_response)
-#     result = fetch_transactions("1234", since="2024-01-01", until="2024-12-31")
-#     assert result == {"error": "Failed to retrieve data"}
+@pytest.fixture
+def sample_transaction_data():
+    """Sample transaction data returned by the API."""
+    return {
+        "data": [
+            {
+                "id": "tx1",
+                "attributes": {
+                    "description": "Coles Supermarket",
+                },
+                "relationships": {
+                    "category": {"data": {"id": "groceries"}},
+                    "parentCategory": {"data": {"id": "good-life"}},
+                },
+            },
+            {
+                "id": "tx2",
+                "attributes": {
+                    "description": "Movie Theater",
+                },
+                "relationships": {
+                    "category": {"data": {"id": "entertainment"}},
+                    "parentCategory": {"data": {"id": "good-life"}},
+                },
+            },
+        ],
+        "links": {"next": None},  # Simulate single-page response
+    }
 
 
-# def test_calculate_totals_exceptions():
-#     df_missing_column = pd.DataFrame({"Transaction": [100, -50, 200]})
-#     with pytest.raises(ValueError, match="DataFrame is missing the 'Amount' column."):
-#         calculate_totals(df_missing_column, "Test Account")
+@pytest.fixture
+def mock_requests_get():
+    with patch("requests.get") as mock_get:
+        yield mock_get
 
-#     df_empty = pd.DataFrame(columns=["Amount"])
-#     with patch("builtins.print") as mock_print:
-#         calculate_totals(df_empty, "Test Account")
-#         mock_print.assert_called_once_with(
-#             "Warning: The DataFrame is empty. No transactions to process."
-#         )
+
+@pytest.fixture
+def sample_transaction_data():
+    return {
+        "data": [
+            {
+                "id": "tx1",
+                "attributes": {
+                    "description": "Coles Supermarket",
+                    "amount": {"value": "100.00", "currency": "AUD"},
+                    "createdAt": "2023-01-01T12:00:00+10:00",
+                },
+                "relationships": {
+                    "category": {"data": {"id": "groceries"}},
+                    "parentCategory": {"data": {"id": "good-life"}},
+                },
+            }
+        ],
+        "links": {"next": None},
+    }
+
+
+@patch("src.config.ACCOUNT_IDS", {"account_id": "12345"})
+@patch("src.utils.ACCESS_TOKEN", "mock_access_token")
+def test_fetch_transactions(mock_requests_get, sample_transaction_data):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = sample_transaction_data
+    mock_requests_get.return_value = mock_response
+
+    result = fetch_transactions(account_id=["12345"], since=None, until=None)
+    mock_requests_get.assert_called_once_with(
+        "https://api.up.com.au/api/v1/accounts/12345/transactions",
+        headers={
+            "Authorization": "Bearer mock_access_token",
+            "Content-Type": "application/json",
+        },
+        params={"filter[since]": None, "filter[until]": None, "page[size]": 100},
+    )
+
+    assert "transactions" in result
+    assert len(result["transactions"]) == 1
+    assert result["transactions"][0]["id"] == "tx1"
+
+
+@patch("src.config.ACCOUNT_IDS", {"account_id": "12345"})
+@patch("src.utils.ACCESS_TOKEN", "mock_access_token")
+def test_fetch_transactions_failing_get_request(mock_requests_get):
+    mock_response = MagicMock()
+    mock_response.status_code = 404
+    mock_response.json.return_value = {"error": "Not Found"}
+    mock_requests_get.return_value = mock_response
+
+    result = fetch_transactions(account_id=["12345"], since=None, until=None)
+    mock_requests_get.assert_called_once_with(
+        "https://api.up.com.au/api/v1/accounts/12345/transactions",
+        headers={
+            "Authorization": "Bearer mock_access_token",
+            "Content-Type": "application/json",
+        },
+        params={"filter[since]": None, "filter[until]": None, "page[size]": 100},
+    )
+
+    assert result == {"error": "Failed to retrieve data"}
