@@ -1,4 +1,3 @@
-import os
 from datetime import date, timedelta
 from flask import Blueprint, request, render_template
 from src.utils import (

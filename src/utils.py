@@ -1,34 +1,42 @@
 import requests
-import pandas as pd
 import os
 import matplotlib
 
 matplotlib.use("Agg")  # Use non-GUI backend for matplotlib
-import matplotlib.pyplot as plt
 import plotly.express as px
 from src.config import ACCOUNT_IDS, NOTION_API_KEY, DATABASE_ID
 import requests
 from datetime import datetime
+from typing import Dict, TypedDict, Optional, List
 
 
 ACCESS_TOKEN = os.getenv("UP_API_TOKEN")
 
 
-def check_up_token():
+def check_up_token() -> None:
     if not os.getenv("UP_API_TOKEN"):
         raise ValueError(
             "Please set the UP_API_TOKEN environment variable in your .env file."
         )
 
 
-def check_notion_token():
+def check_notion_token() -> None:
     if not os.getenv("NOTION_API_KEY"):
         raise ValueError(
             "Please set the NOTION_API_KEY environment variable in your .env file."
         )
 
 
-def is_category_match(category_info, parent_category_info, parent_category):
+class CategoryInfo(TypedDict, total=False):
+    type: str
+    id: str
+
+
+def is_category_match(
+    category_info: Optional[CategoryInfo],
+    parent_category_info: Optional[CategoryInfo],
+    parent_category: Optional[List[str]],
+) -> bool:
     if not parent_category:
         return False
     return any(
@@ -38,7 +46,7 @@ def is_category_match(category_info, parent_category_info, parent_category):
     )
 
 
-def is_description_match(transaction_description, description):
+def is_description_match(transaction_description: str, description: str) -> bool:
     return (
         description.replace(" ", "").strip().lower()
         in transaction_description.replace(" ", "").strip()
@@ -78,16 +86,19 @@ def is_amount_match(transaction, min_amount, max_amount):
 
 
 def fetch_transactions(
-    account_id=None,
-    since=None,
-    until=None,
-    parent_category=None,
-    description=None,
-    all_accounts=False,
-    min_amount=None,
-    max_amount=None,
-    food_related=False,
+    account_id: Optional[List[str]] = None,
+    since: Optional[str] = None,
+    until: Optional[str] = None,
+    parent_category: Optional[List[str]] = None,
+    description: Optional[str] = None,
+    all_accounts: bool = False,
+    min_amount: Optional[float] = None,
+    max_amount: Optional[float] = None,
+    food_related: bool = False,
 ):
+    """
+    Fetch transactions from the UP API based on the provided filters.
+    """
     accounts_to_fetch = (
         account_id if account_id else ACCOUNT_IDS.values() if all_accounts else []
     )
@@ -170,7 +181,15 @@ def fetch_transactions(
     return {"transactions": all_transactions}
 
 
-def push_to_notion(transaction_data):
+def push_to_notion(transaction_data: Dict[str, str]) -> None:
+    """Pushes specific transaction data to Notion.
+
+    Args:
+        transaction_data: A dictionary containing transaction details with keys:
+            - "description" (str): The description of the transaction.
+            - "amount" (str): The transaction amount as a string (e.g., "-18.38").
+            - "createdAt" (str): The creation time of the transaction in ISO 8601 format.
+    """
     url = "https://api.notion.com/v1/pages"
 
     headers = {
