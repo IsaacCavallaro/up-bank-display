@@ -9,65 +9,82 @@
     <!-- Plotly CDN -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
-<body class="bg-gray-100 p-6">
-    <div class="mt-6">
-        <h2 class="text-xl font-semibold text-center">Account Balances</h2>
+<body class="bg-gray-50 p-6">
+    <div class="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6">
+        <h1 class="text-2xl font-bold text-gray-700 text-center mb-6">Transaction Data</h1>
 
         <!-- Date range selection form -->
-        <form method="POST" action="/" class="text-center mb-4">
+        <form method="POST" action="/" class="space-y-6">
             <!-- Date range inputs -->
-            <label for="since" class="mr-2">From:</label>
-            <input
-                type="date"
-                id="since"
-                name="since"
-                value="{{ request.form.get('since', default_since) }}"
-                class="border rounded p-1 mr-4"
-                required
-            >
-
-            <label for="until" class="mr-2">To:</label>
-            <input
-                type="date"
-                id="until"
-                name="until"
-                value="{{ request.form.get('until', default_until) }}"
-                class="border rounded p-1 mr-4"
-                required
-            >
+            <div>
+                <h2 class="text-lg font-semibold text-gray-600">Date Range</h2>
+                <div class="flex flex-wrap gap-4 mt-2">
+                    <div>
+                        <label for="since" class="block text-sm font-medium text-gray-600">From</label>
+                        <input
+                            type="date"
+                            id="since"
+                            name="since"
+                            value="{{ request.form.get('since', default_since) }}"
+                            class="w-full border rounded px-3 py-2"
+                            required
+                        >
+                    </div>
+                    <div>
+                        <label for="until" class="block text-sm font-medium text-gray-600">To</label>
+                        <input
+                            type="date"
+                            id="until"
+                            name="until"
+                            value="{{ request.form.get('until', default_until) }}"
+                            class="w-full border rounded px-3 py-2"
+                            required
+                        >
+                    </div>
+                </div>
+            </div>
 
             <!-- Min and Max Amount -->
-            <label for="min_amount" class="mr-2">Min Amount:</label>
-            <input
-                type="number"
-                id="min_amount"
-                name="min_amount"
-                step="0.01"
-                value="{{ min_amount if min_amount is not none else '' }}"
-                class="border rounded p-1 mr-4"
-                placeholder="Enter minimum amount"
-            >
-
-            <label for="max_amount" class="mr-2">Max Amount:</label>
-            <input
-                type="number"
-                id="max_amount"
-                name="max_amount"
-                step="0.01"
-                value="{{ max_amount if max_amount is not none else '' }}"
-                class="border rounded p-1 mr-4"
-                placeholder="Enter maximum amount"
-            >
+            <div>
+                <h2 class="text-lg font-semibold text-gray-600">Transaction Amount</h2>
+                <div class="flex flex-wrap gap-4 mt-2">
+                    <div>
+                        <label for="min_amount" class="block text-sm font-medium text-gray-600">Min Amount</label>
+                        <input
+                            type="number"
+                            id="min_amount"
+                            name="min_amount"
+                            step="0.01"
+                            value="{{ min_amount if min_amount is not none else '' }}"
+                            class="w-full border rounded px-3 py-2"
+                            placeholder="Enter minimum amount"
+                        >
+                    </div>
+                    <div>
+                        <label for="max_amount" class="block text-sm font-medium text-gray-600">Max Amount</label>
+                        <input
+                            type="number"
+                            id="max_amount"
+                            name="max_amount"
+                            step="0.01"
+                            value="{{ max_amount if max_amount is not none else '' }}"
+                            class="w-full border rounded px-3 py-2"
+                            placeholder="Enter maximum amount"
+                        >
+                    </div>
+                </div>
+            </div>
 
             <!-- Accounts multi-select -->
-            <div class="accounts">
-                <label for="account" class="block mb-2 font-bold">Accounts:</label>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-600">Accounts</h2>
                 <select
                     id="account"
                     name="account[]"
-                    class="border rounded p-1 w-60"
+                    class="w-full border rounded px-3 py-2"
                     multiple
                     size="5"
+                    aria-label="Select accounts"
                 >
                     {% for account_name in account_names %}
                         <option value="{{ account_name }}" {% if account_name in selected_accounts %}selected{% endif %}>
@@ -75,29 +92,19 @@
                         </option>
                     {% endfor %}
                 </select>
-                <div id="selected-accounts" class="mt-2 text-sm">
-                    {% if selected_accounts %}
-                        <p>Selected Accounts:</p>
-                        <ul>
-                            {% for account in selected_accounts %}
-                                <li class="text-blue-500">{{ account }}</li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="text-gray-500">No accounts selected.</p>
-                    {% endif %}
-                </div>
+                <p class="mt-2 text-sm text-gray-500">Hold down Ctrl (Windows) or Command (Mac) to select multiple accounts.</p>
             </div>
 
             <!-- Categories multi-select -->
-            <div class="categories mt-4">
-                <label for="category" class="block mb-2 font-bold">Categories:</label>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-600">Categories</h2>
                 <select
                     id="category"
                     name="category[]"
-                    class="border rounded p-1 w-60"
+                    class="w-full border rounded px-3 py-2"
                     multiple
                     size="5"
+                    aria-label="Select categories"
                 >
                     {% for category in categories %}
                         <option value="{{ category }}" {% if category in selected_categories %}selected{% endif %}>
@@ -105,60 +112,70 @@
                         </option>
                     {% endfor %}
                 </select>
-                <div id="selected-categories" class="mt-2 text-sm">
-                    {% if selected_categories %}
-                        <p>Selected Categories:</p>
-                        <ul>
-                            {% for category in selected_categories %}
-                                <li class="text-green-500">{{ category }}</li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="text-gray-500">No categories selected.</p>
-                    {% endif %}
+                <p class="mt-2 text-sm text-gray-500">Hold down Ctrl (Windows) or Command (Mac) to select multiple categories.</p>
+            </div>
+
+            <!-- Additional Filters -->
+            <div>
+                <h2 class="text-lg font-semibold text-gray-600">Additional Filters</h2>
+                <div class="flex flex-wrap gap-4 mt-2">
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-600">Description</label>
+                        <input
+                            type="text"
+                            id="description"
+                            name="description"
+                            value="{{ description if description is not none else '' }}"
+                            class="w-full border rounded px-3 py-2"
+                            placeholder="Enter description"
+                        >
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-4 mt-4">
+                    <div>
+                        <input
+                            type="checkbox"
+                            id="all_accounts"
+                            name="all_accounts"
+                            {% if all_accounts %}checked{% endif %}
+                            class="mr-2"
+                        >
+                        <label for="all_accounts" class="text-sm font-medium text-gray-600">Include All Accounts</label>
+                    </div>
+                    <div>
+                        <input
+                            type="checkbox"
+                            id="send_to_notion"
+                            name="send_to_notion"
+                            {% if send_to_notion %}checked{% endif %}
+                            class="mr-2"
+                        >
+                        <label for="send_to_notion" class="text-sm font-medium text-gray-600">Send to Notion</label>
+                    </div>
+                    <div>
+                        <input
+                            type="checkbox"
+                            id="food_related"
+                            name="food_related"
+                            {% if food_related %}checked{% endif %}
+                            class="mr-2"
+                        >
+                        <label for="food_related" class="text-sm font-medium text-gray-600">Food Related</label>
+                    </div>
                 </div>
             </div>
-            <label for="description" class="mr-2">Description:</label>
-            <input
-                type="text"
-                id="description"
-                name="description"
-                value="{{ description if description is not none else '' }}"
-                class="border rounded p-1 mr-4"
-                placeholder="Enter description"
-            />
 
-
-            <label for="all_accounts" class="mr-2">All Accounts:</label>
-            <input
-                type="checkbox"
-                id="all_accounts"
-                name="all_accounts"
-                {% if all_accounts %}checked{% endif %}
-            >
-
-            <label for="send_to_notion" class="mr-2">To Notion:</label>
-            <input
-                type="checkbox"
-                id="send_to_notion"
-                name="send_to_notion"
-                {% if send_to_notion %}checked{% endif %}
-            >
-
-            <label for="food_related" class="mr-2">Food-Related:</label>
-            <input
-                type="checkbox"
-                id="food_related"
-                name="food_related"
-                {% if food_related %}checked{% endif %}
-            />
-
-
-            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">SUBMIT</button>
+            <!-- Submit Button -->
+            <div class="text-center mt-6">
+                <button type="submit" class="px-6 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600">
+                    Submit
+                </button>
+            </div>
         </form>
 
         <!-- Display the bar chart -->
-        <div class="mt-4">
+        <div class="mt-8">
             {{ bar_chart_html | safe }}
         </div>
     </div>
