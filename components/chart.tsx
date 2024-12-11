@@ -121,6 +121,7 @@ export function ChartComponent({ filters, chartType, title }: ChartComponentProp
                 <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
               ))}
             </Pie>
+            <Tooltip />
             <text
               x="50%"
               y="50%"
