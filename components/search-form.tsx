@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const ACCOUNT_IDS = {
-  IC_INDIVIDUAL: process.env.IC_INDIVIDUAL || '', // Ensure this environment variable is defined
+  IC_INDIVIDUAL: process.env.IC_INDIVIDUAL || '',
+  TWO_UP: process.env.TWO_UP || '',
 }
 
 const CATEGORIES = ["personal", "good-life", "home", "transport"]
@@ -26,21 +27,17 @@ export function SearchForm({ onSearch }: { onSearch: (filters: any) => void }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Map account name to account ID before passing it to the search handler
     const accountId = ACCOUNT_IDS[filters.account] || filters.account;
 
-    // Transform filters for the backend
     const filtersWithDates = {
       ...filters,
-      account: accountId,
+      account: filters.account, // Send the account key, not ID
     };
 
-    // Remove any empty or undefined values from filters
     const sanitizedFilters = Object.fromEntries(
       Object.entries(filtersWithDates).filter(([_, value]) => value !== '' && value !== undefined)
     );
 
-    // Pass the sanitized filters to the search handler
     onSearch(sanitizedFilters);
   };
 
