@@ -9,6 +9,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const ACCOUNT_IDS = {
   IC_INDIVIDUAL: process.env.IC_INDIVIDUAL || '',
   TWO_UP: process.env.TWO_UP || '',
+  BILLS: process.env.BILLS || '',
+  GIFTS: process.env.GIFTS || '',
+  KIDS: process.env.KIDS || '',
+  EXTRAS: process.env.EXTRAS || '',
+  HOLIDAYS: process.env.HOLIDAYS || '',
+  SUPER: process.env.SUPER || '',
+  INVESTMENTS: process.env.INVESTMENTS || '',
+  RAINY_DAY: process.env.RAINY_DAY || '',
+  EMERGENCY: process.env.EMERGENCY || '',
+  HOME_DEPOSIT: process.env.HOME_DEPOSIT || '',
+  TRANSPORT: process.env.TRANSPORT || '',
+  HEALTH: process.env.HEALTH || '',
+  GROCERIES: process.env.GROCERIES || '',
+  PERSONAL_SAVER: process.env.PERSONAL_SAVER || '',
+  RENT: process.env.RENT || '',
 }
 
 const CATEGORIES = ["personal", "good-life", "home", "transport"]
