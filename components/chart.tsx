@@ -74,7 +74,14 @@ export function ChartComponent({ filters }: { filters: any }) {
     fetchData()
   }, [filters])
 
-  const amount = data.length > 0 ? parseFloat(data[0].attributes.amount.value) : null
+  const totalWithdrawals = data
+    .filter(transaction => parseFloat(transaction.attributes.amount.value) < 0)
+    .reduce((acc, transaction) => acc + parseFloat(transaction.attributes.amount.value), 0)
+
+  const totalDeposits = data
+    .filter(transaction => parseFloat(transaction.attributes.amount.value) >= 0)
+    .reduce((acc, transaction) => acc + parseFloat(transaction.attributes.amount.value), 0)
+
 
   const renderChart = () => {
     const CommonProps = {
@@ -189,11 +196,12 @@ export function ChartComponent({ filters }: { filters: any }) {
       <CardContent>
         {loading && <div>Loading...</div>}
         {error && <div className="text-red-500">{error}</div>}
-        {amount !== null && (
-          <div className="text-xl font-semibold">
-            Amount: ${amount.toFixed(2)}
-          </div>
-        )}
+        <div className="text-xl font-semibold">
+          Total Withdrawals: ${totalWithdrawals.toFixed(2)}
+        </div>
+        <div className="text-xl font-semibold">
+          Total Deposits: ${totalDeposits.toFixed(2)}
+        </div>
         <ResponsiveContainer width="100%" height={400}>
           {renderChart()}
         </ResponsiveContainer>
@@ -201,5 +209,3 @@ export function ChartComponent({ filters }: { filters: any }) {
     </Card>
   )
 }
-
-
