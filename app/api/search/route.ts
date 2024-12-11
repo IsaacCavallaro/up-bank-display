@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 
-const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, account: string) => {
+const isDescriptionMatch = (transactionDescription: string, description: string): boolean => {
+  return transactionDescription
+    .replace(/\s+/g, '')
+    .toLowerCase()
+    .includes(description.replace(/\s+/g, '').toLowerCase());
+};
+
+const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, account: string, description?: string) => {
   const ACCESS_TOKEN = process.env.UP_API_TOKEN;
   const ACCOUNT_IDS = {
     IC_INDIVIDUAL: process.env.IC_INDIVIDUAL || '',
@@ -25,10 +32,8 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
   let accountIdsToFetch = [];
 
   if (account === 'ALL') {
-    // If 'ALL' is selected, use all accounts
     accountIdsToFetch = Object.values(ACCOUNT_IDS);
   } else {
-    // If a specific account is selected, use that account
     accountIdsToFetch = [ACCOUNT_IDS[account] || ''];
   }
 
@@ -47,7 +52,6 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
     'page[size]': '100',
   });
 
-  // Function to fetch transactions for a specific account
   const fetchTransactionsForAccount = async (accountId: string) => {
     const url = `https://api.up.com.au/api/v1/accounts/${accountId}/transactions?${params.toString()}`;
 
@@ -61,32 +65,34 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
         const data = await response.json();
 
         if (data && Array.isArray(data.data)) {
-          return data.data.map((transaction: any) => {
-            if (transaction?.id && transaction.attributes) {
-              return {
-                id: transaction.id,
-                attributes: {
-                  description: transaction.attributes.description,
-                  amount: {
-                    currencyCode: transaction.attributes.amount.currencyCode,
-                    value: transaction.attributes.amount.value,
-                    valueInBaseUnits: transaction.attributes.amount.valueInBaseUnits,
-                  },
-                  settledAt: transaction.attributes.settledAt,
-                  category: transaction.attributes.category,
-                  account: transaction.attributes.account,
+          // Filter transactions by description if provided
+          return data.data
+            .filter((transaction: any) =>
+              description
+                ? isDescriptionMatch(transaction.attributes.description, description)
+                : true
+            )
+            .map((transaction: any) => ({
+              id: transaction.id,
+              attributes: {
+                description: transaction.attributes.description,
+                amount: {
+                  currencyCode: transaction.attributes.amount.currencyCode,
+                  value: transaction.attributes.amount.value,
+                  valueInBaseUnits: transaction.attributes.amount.valueInBaseUnits,
                 },
-                relationships: {
-                  category: {
-                    data: {
-                      id: transaction.relationships.category?.data?.id || 'Unknown',
-                    },
+                settledAt: transaction.attributes.settledAt,
+                category: transaction.attributes.category,
+                account: transaction.attributes.account,
+              },
+              relationships: {
+                category: {
+                  data: {
+                    id: transaction.relationships.category?.data?.id || 'Unknown',
                   },
                 },
-              };
-            }
-            return null;
-          }).filter(Boolean);
+              },
+            }));
         } else {
           throw new Error('Invalid data structure');
         }
@@ -100,38 +106,32 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
     }
   };
 
-  // Fetch transactions for all accounts (if 'ALL' is selected)
   try {
-    const allTransactions = await Promise.all(accountIdsToFetch.map(accountId => fetchTransactionsForAccount(accountId)));
+    const allTransactions = await Promise.all(
+      accountIdsToFetch.map(accountId => fetchTransactionsForAccount(accountId))
+    );
 
-    // Flatten the array of transaction data and return the result
     const allData = allTransactions.flat();
-
     return { data: allData };
   } catch (error) {
     return { error: error.message };
   }
-}
-
+};
 
 // POST method to handle form submission
 export async function POST(request: Request) {
   try {
-    // Parse the body of the request to extract form data
     const body = await request.json();
-    const { startDate, endDate, account } = body;
+    const { startDate, endDate, account, description } = body;
 
     if (!startDate || !endDate || !account) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Fetch transactions using the provided filters
-    const transactions = await fetchTransactionsFromUPBank(startDate, endDate, account);
+    const transactions = await fetchTransactionsFromUPBank(startDate, endDate, account, description);
 
-    // Return the fetched transactions
     return NextResponse.json(transactions);
   } catch (error) {
-    console.error('Error in POST request:', error);
-    return NextResponse.json({ error: 'Failed to process the request' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
   }
 }
