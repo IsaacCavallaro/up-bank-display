@@ -1,9 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import {
+  LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label
+} from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
 type Transaction = {
   id: string
@@ -33,20 +37,18 @@ type TransactionData = {
   data: Transaction[]
 }
 
-type ChartType = 'line' | 'bar' | 'area' | 'donut'
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
+type ChartType = 'area' | 'bar' | 'line' | 'donut'
 
 export function ChartComponent({ filters }: { filters: any }) {
   const [data, setData] = useState<Transaction[]>([])
-  const [chartType, setChartType] = useState<ChartType>('line')
+  const [chartType, setChartType] = useState<ChartType>('area') // Default to 'area'
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
-      setError(null)  // Reset error state
+      setError(null) // Reset error state
       try {
         const response = await fetch('/api/search', {
           method: 'POST',
@@ -92,35 +94,39 @@ export function ChartComponent({ filters }: { filters: any }) {
             <XAxis dataKey="date" />
             <YAxis />
             <Tooltip
-              formatter={(value) => [`$${Math.abs(value).toFixed(2)}`, 'Amount']}
+              formatter={(value) => [`$${value.toFixed(2)}`, 'Amount']}
               labelFormatter={(label) => `Date: ${label}`}
             />
             <Legend />
             <Bar dataKey="amount" name="Transaction Amount" fill="#8884d8" />
           </BarChart>
         )
-      case 'area':
+      case 'line':
         return (
-          <AreaChart {...CommonProps}>
+          <LineChart {...CommonProps}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis />
             <Tooltip
-              formatter={(value) => [`$${Math.abs(value).toFixed(2)}`, 'Amount']}
+              formatter={(value) => [`$${value.toFixed(2)}`, 'Amount']}
               labelFormatter={(label) => `Date: ${label}`}
             />
             <Legend />
-            <Area type="monotone" dataKey="amount" name="Transaction Amount" stroke="#8884d8" fill="#8884d8" />
-          </AreaChart>
+            <Line type="monotone" dataKey="amount" name="Transaction Amount" stroke="#8884d8" activeDot={{ r: 8 }} />
+          </LineChart>
         )
       case 'donut':
+        const donutData = data.map(transaction => ({
+          name: transaction.attributes.description || 'Unknown',
+          value: parseFloat(transaction.attributes.amount.value) || 0,
+        })).filter(item => item.value > 0); // Filter out invalid or zero values
+
+        const totalAmount = donutData.reduce((acc, item) => acc + item.value, 0);
+
         return (
           <PieChart>
             <Pie
-              data={data.map(transaction => ({
-                name: transaction.relationships.category?.data?.id || 'Unknown',
-                value: Math.abs(parseFloat(transaction.attributes.amount.value)),
-              }))}
+              data={donutData}
               cx="50%"
               cy="50%"
               innerRadius={60}
@@ -129,27 +135,37 @@ export function ChartComponent({ filters }: { filters: any }) {
               paddingAngle={5}
               dataKey="value"
             >
-              {data.map((entry, index) => (
+              {donutData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
+              <Label
+                value={`Total: $${totalAmount.toFixed(2)}`}
+                position="center"
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  textAnchor: 'middle',
+                  dominantBaseline: 'middle',
+                }}
+              />
             </Pie>
-            <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+            <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
             <Legend />
           </PieChart>
-        )
+        );
       default:
         return (
-          <LineChart {...CommonProps}>
+          <AreaChart {...CommonProps}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis />
             <Tooltip
-              formatter={(value) => [`$${Math.abs(value).toFixed(2)}`, 'Amount']}
+              formatter={(value) => [`$${value.toFixed(2)}`, 'Amount']}
               labelFormatter={(label) => `Date: ${label}`}
             />
             <Legend />
-            <Line type="monotone" dataKey="amount" name="Transaction Amount" stroke="#8884d8" activeDot={{ r: 8 }} />
-          </LineChart>
+            <Area type="monotone" dataKey="amount" name="Transaction Amount" stroke="#8884d8" fill="#8884d8" />
+          </AreaChart>
         )
     }
   }
@@ -185,3 +201,5 @@ export function ChartComponent({ filters }: { filters: any }) {
     </Card>
   )
 }
+
+

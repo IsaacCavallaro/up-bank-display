@@ -27,7 +27,7 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string) =
 
   try {
     const response = await fetch(url, {
-      method: 'GET', // Use GET method
+      method: 'GET',
       headers,
     });
 
