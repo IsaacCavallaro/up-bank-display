@@ -20,10 +20,19 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
     GROCERIES: process.env.GROCERIES || '',
     PERSONAL_SAVER: process.env.PERSONAL_SAVER || '',
     RENT: process.env.RENT || '',
+  };
+
+  let accountIdsToFetch = [];
+
+  if (account === 'ALL') {
+    // If 'ALL' is selected, use all accounts
+    accountIdsToFetch = Object.values(ACCOUNT_IDS);
+  } else {
+    // If a specific account is selected, use that account
+    accountIdsToFetch = [ACCOUNT_IDS[account] || ''];
   }
 
-  const accountId = ACCOUNT_IDS[account] || '';
-  if (!accountId) {
+  if (accountIdsToFetch.includes('')) {
     return { error: 'Invalid account selected' };
   }
 
@@ -38,20 +47,21 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
     'page[size]': '100',
   });
 
-  const url = `https://api.up.com.au/api/v1/accounts/${accountId}/transactions?${params.toString()}`;
+  // Function to fetch transactions for a specific account
+  const fetchTransactionsForAccount = async (accountId: string) => {
+    const url = `https://api.up.com.au/api/v1/accounts/${accountId}/transactions?${params.toString()}`;
 
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers,
-    });
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+      });
 
-    if (response.ok) {
-      const data = await response.json();
+      if (response.ok) {
+        const data = await response.json();
 
-      if (data && Array.isArray(data.data)) {
-        const transformedData = data.data
-          .map((transaction: any) => {
+        if (data && Array.isArray(data.data)) {
+          return data.data.map((transaction: any) => {
             if (transaction?.id && transaction.attributes) {
               return {
                 id: transaction.id,
@@ -76,22 +86,32 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
               };
             }
             return null;
-          })
-          .filter(Boolean);
-
-        return { data: transformedData };
+          }).filter(Boolean);
+        } else {
+          throw new Error('Invalid data structure');
+        }
       } else {
-        return { error: 'Invalid data structure' };
+        console.error('Error fetching data:', await response.json());
+        throw new Error('Failed to retrieve data');
       }
-    } else {
-      console.error('Error fetching data:', await response.json());
-      return { error: 'Failed to retrieve data' };
+    } catch (error) {
+      console.error('Error in GET request:', error);
+      throw new Error('Failed to process the request');
     }
+  };
+
+  // Fetch transactions for all accounts (if 'ALL' is selected)
+  try {
+    const allTransactions = await Promise.all(accountIdsToFetch.map(accountId => fetchTransactionsForAccount(accountId)));
+
+    // Flatten the array of transaction data and return the result
+    const allData = allTransactions.flat();
+
+    return { data: allData };
   } catch (error) {
-    console.error('Error in GET request:', error);
-    return { error: 'Failed to process the request' };
+    return { error: error.message };
   }
-};
+}
 
 
 // POST method to handle form submission

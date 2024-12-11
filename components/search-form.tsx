@@ -36,25 +36,27 @@ export function SearchForm({ onSearch }: { onSearch: (filters: any) => void }) {
     maxAmount: '',
     description: '',
     category: '',
-    account: ''
+    account: '',
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const [allAccounts, setAllAccounts] = useState(false) // State for the "All Accounts" checkbox
 
-    const accountId = ACCOUNT_IDS[filters.account] || filters.account;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    const accountId = allAccounts ? 'ALL' : ACCOUNT_IDS[filters.account] || filters.account
 
     const filtersWithDates = {
       ...filters,
-      account: filters.account, // Send the account key, not ID
-    };
+      account: accountId, // Send 'ALL' if the checkbox is checked, or the selected account key
+    }
 
     const sanitizedFilters = Object.fromEntries(
       Object.entries(filtersWithDates).filter(([_, value]) => value !== '' && value !== undefined)
-    );
+    )
 
-    onSearch(sanitizedFilters);
-  };
+    onSearch(sanitizedFilters)
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -63,6 +65,11 @@ export function SearchForm({ onSearch }: { onSearch: (filters: any) => void }) {
 
   const handleSelectChange = (name: string, value: string) => {
     setFilters(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleCheckboxChange = () => {
+    setAllAccounts(prev => !prev)
+    setFilters(prev => ({ ...prev, account: '' })) // Reset the account field when "All Accounts" is selected
   }
 
   return (
@@ -142,7 +149,11 @@ export function SearchForm({ onSearch }: { onSearch: (filters: any) => void }) {
       {/* Account Select */}
       <div>
         <Label htmlFor="account">Account</Label>
-        <Select value={filters.account} onValueChange={(value) => handleSelectChange('account', value)}>
+        <Select
+          value={filters.account}
+          onValueChange={(value) => handleSelectChange('account', value)}
+          disabled={allAccounts} // Disable select if "All Accounts" is checked
+        >
           <SelectTrigger>
             <SelectValue placeholder="Select Account" />
           </SelectTrigger>
@@ -154,6 +165,19 @@ export function SearchForm({ onSearch }: { onSearch: (filters: any) => void }) {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* All Accounts Checkbox */}
+      <div>
+        <Label>
+          <input
+            type="checkbox"
+            checked={allAccounts}
+            onChange={handleCheckboxChange}
+            className="mr-2"
+          />
+          All Accounts
+        </Label>
       </div>
 
       <Button type="submit">Apply Filters</Button>
