@@ -18,7 +18,26 @@ const isCategoryMatch = (categoryInfo, parentCategoryInfo, parentCategory) => {
   );
 };
 
-const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, account: string, description?: string, category?: string) => {
+const isAmountMatch = (transaction, minAmount, maxAmount) => {
+  const amountValue = parseFloat(transaction?.attributes?.amount?.value);
+  if (isNaN(amountValue)) {
+    return true;
+  }
+  return !(
+    (minAmount !== undefined && amountValue < minAmount) ||
+    (maxAmount !== undefined && amountValue > maxAmount)
+  );
+};
+
+const fetchTransactionsFromUPBank = async (
+  startDate: string,
+  endDate: string,
+  account: string,
+  description?: string,
+  category?: string,
+  minAmount?: number,
+  maxAmount?: number
+) => {
   const ACCESS_TOKEN = process.env.UP_API_TOKEN;
   const ACCOUNT_IDS = {
     IC_INDIVIDUAL: process.env.IC_INDIVIDUAL || '',
@@ -76,7 +95,7 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
         const data = await response.json();
 
         if (data && Array.isArray(data.data)) {
-          // Filter transactions by description and category if provided
+          // Filter transactions by description, category, and amount if provided
           return data.data
             .filter((transaction) => {
               const categoryInfo =
@@ -95,7 +114,8 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
                     categoryInfo,
                     parentCategoryInfo,
                     category.split(',')
-                  ))
+                  )) &&
+                isAmountMatch(transaction, minAmount, maxAmount)
               );
             })
             .map((transaction: any) => ({
@@ -105,7 +125,8 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
                 amount: {
                   currencyCode: transaction.attributes.amount.currencyCode,
                   value: transaction.attributes.amount.value,
-                  valueInBaseUnits: transaction.attributes.amount.valueInBaseUnits,
+                  valueInBaseUnits:
+                    transaction.attributes.amount.valueInBaseUnits,
                 },
                 settledAt: transaction.attributes.settledAt,
                 category: transaction.attributes.category,
@@ -114,7 +135,8 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
               relationships: {
                 category: {
                   data: {
-                    id: transaction.relationships.category?.data?.id || 'Unknown',
+                    id:
+                      transaction.relationships.category?.data?.id || 'Unknown',
                   },
                 },
               },
@@ -148,14 +170,22 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { startDate, endDate, account, description, category } = body;
-    console.log(startDate, endDate, account, description, category)
+    const { startDate, endDate, account, description, category, minAmount, maxAmount } = body;
+    console.log(startDate, endDate, account, description, category, minAmount, maxAmount);
 
     if (!startDate || !endDate || !account) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const transactions = await fetchTransactionsFromUPBank(startDate, endDate, account, description, category);
+    const transactions = await fetchTransactionsFromUPBank(
+      startDate,
+      endDate,
+      account,
+      description,
+      category,
+      minAmount,
+      maxAmount
+    );
 
     return NextResponse.json(transactions);
   } catch (error) {
