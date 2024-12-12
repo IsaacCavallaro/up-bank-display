@@ -7,7 +7,18 @@ const isDescriptionMatch = (transactionDescription: string, description: string)
     .includes(description.replace(/\s+/g, '').toLowerCase());
 };
 
-const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, account: string, description?: string) => {
+const isCategoryMatch = (categoryInfo, parentCategoryInfo, parentCategory) => {
+  if (!parentCategory || parentCategory.length === 0) {
+    return false;
+  }
+  return parentCategory.some(
+    (cat) =>
+      (parentCategoryInfo && parentCategoryInfo.id === cat) ||
+      (categoryInfo && categoryInfo.id === cat)
+  );
+};
+
+const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, account: string, description?: string, category?: string) => {
   const ACCESS_TOKEN = process.env.UP_API_TOKEN;
   const ACCOUNT_IDS = {
     IC_INDIVIDUAL: process.env.IC_INDIVIDUAL || '',
@@ -65,13 +76,28 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
         const data = await response.json();
 
         if (data && Array.isArray(data.data)) {
-          // Filter transactions by description if provided
+          // Filter transactions by description and category if provided
           return data.data
-            .filter((transaction: any) =>
-              description
-                ? isDescriptionMatch(transaction.attributes.description, description)
-                : true
-            )
+            .filter((transaction) => {
+              const categoryInfo =
+                transaction.relationships?.category?.data || null;
+              const parentCategoryInfo =
+                transaction.relationships?.parentCategory?.data || null;
+
+              return (
+                (!description ||
+                  isDescriptionMatch(
+                    transaction.attributes.description,
+                    description
+                  )) &&
+                (!category ||
+                  isCategoryMatch(
+                    categoryInfo,
+                    parentCategoryInfo,
+                    category.split(',')
+                  ))
+              );
+            })
             .map((transaction: any) => ({
               id: transaction.id,
               attributes: {
@@ -122,13 +148,14 @@ const fetchTransactionsFromUPBank = async (startDate: string, endDate: string, a
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { startDate, endDate, account, description } = body;
+    const { startDate, endDate, account, description, category } = body;
+    console.log(startDate, endDate, account, description, category)
 
     if (!startDate || !endDate || !account) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const transactions = await fetchTransactionsFromUPBank(startDate, endDate, account, description);
+    const transactions = await fetchTransactionsFromUPBank(startDate, endDate, account, description, category);
 
     return NextResponse.json(transactions);
   } catch (error) {
