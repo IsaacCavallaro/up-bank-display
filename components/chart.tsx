@@ -2,69 +2,62 @@
 
 import { useState, useEffect } from 'react'
 import {
-  LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  PieChart,
+  Pie,
+  AreaChart,
+  Area,
+  LineChart,
+  Line,
+  Tooltip,
+  Legend,
+  Cell
 } from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
-
-type Transaction = {
+interface Transaction {
   id: string
   attributes: {
+    amount: { value: string }
+    category: string
     description: string
-    amount: {
-      currencyCode: string
-      value: string
-      valueInBaseUnits: number
-    }
-    settledAt: string
-    category: string | null
-    account: string
-    status: string
-    message: string
-    transactionType: string
-    performingCustomer: {
-      displayName: string
-    }
-  }
-  relationships: {
-    category: { data: { id: string } | null }
+    createdAt: string
   }
 }
 
-type TransactionData = {
-  data: Transaction[]
+type ChartType = 'bar' | 'donut' | 'area' | 'line'
+
+interface ChartComponentProps {
+  filters: any
+  chartType: ChartType
+  title: string
 }
 
-type ChartType = 'area' | 'bar' | 'line' | 'donut'
-
-export function ChartComponent({ filters }: { filters: any }) {
+export function ChartComponent({ filters, chartType, title }: ChartComponentProps) {
   const [data, setData] = useState<Transaction[]>([])
-  const [chartType, setChartType] = useState<ChartType>('area') // Default to 'area'
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
-      setError(null) // Reset error state
+      setError(null)
       try {
         const response = await fetch('/api/search', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(filters),
         })
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch data')
-        }
+        if (!response.ok) throw new Error('Failed to fetch data')
 
-        const result: TransactionData = await response.json()
+        const result = await response.json()
         setData(result.data || [])
-      } catch (error) {
+      } catch (error: any) {
         setError('Error fetching data: ' + error.message)
       } finally {
         setLoading(false)
@@ -82,54 +75,33 @@ export function ChartComponent({ filters }: { filters: any }) {
     .filter(transaction => parseFloat(transaction.attributes.amount.value) >= 0)
     .reduce((acc, transaction) => acc + parseFloat(transaction.attributes.amount.value), 0)
 
+  const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042']
 
   const renderChart = () => {
-    const CommonProps = {
-      data: data.map(transaction => ({
-        date: new Date(transaction.attributes.settledAt).toLocaleDateString(),
-        amount: parseFloat(transaction.attributes.amount.value),
-        category: transaction.relationships.category?.data?.id || 'Unknown',
-      })),
-      margin: { top: 10, right: 30, left: 0, bottom: 0 },
-    }
-
     switch (chartType) {
       case 'bar':
         return (
-          <BarChart {...CommonProps}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
+          <BarChart data={data}>
+            <XAxis dataKey="attributes.category" />
             <YAxis />
-            <Tooltip
-              formatter={(value) => [`$${value.toFixed(2)}`, 'Amount']}
-              labelFormatter={(label) => `Date: ${label}`}
-            />
+            <Tooltip />
             <Legend />
-            <Bar dataKey="amount" name="Transaction Amount" fill="#8884d8" />
+            <Bar dataKey="attributes.amount.value" fill="#8884d8">
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+              ))}
+            </Bar>
           </BarChart>
         )
-      case 'line':
-        return (
-          <LineChart {...CommonProps}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip
-              formatter={(value) => [`$${value.toFixed(2)}`, 'Amount']}
-              labelFormatter={(label) => `Date: ${label}`}
-            />
-            <Legend />
-            <Line type="monotone" dataKey="amount" name="Transaction Amount" stroke="#8884d8" activeDot={{ r: 8 }} />
-          </LineChart>
-        )
       case 'donut':
+        const totalAmount = data.reduce(
+          (acc, transaction) => acc + parseFloat(transaction.attributes.amount.value),
+          0
+        )
         const donutData = data.map(transaction => ({
-          name: transaction.attributes.description || 'Unknown',
-          value: parseFloat(transaction.attributes.amount.value) || 0,
-        })).filter(item => item.value > 0); // Filter out invalid or zero values
-
-        const totalAmount = donutData.reduce((acc, item) => acc + item.value, 0);
-
+          name: transaction.attributes.category,
+          value: Math.abs(parseFloat(transaction.attributes.amount.value)),
+        }))
         return (
           <PieChart>
             <Pie
@@ -138,73 +110,87 @@ export function ChartComponent({ filters }: { filters: any }) {
               cy="50%"
               innerRadius={60}
               outerRadius={80}
-              fill="#8884d8"
               paddingAngle={5}
               dataKey="value"
+              label={({ value, percent }) =>
+                `$${value.toFixed(0)} (${(percent * 100).toFixed(1)}%)`
+              }
+              labelLine={false}
             >
               {donutData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
               ))}
-              <Label
-                value={`Total: $${totalAmount.toFixed(2)}`}
-                position="center"
-                style={{
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  textAnchor: 'middle',
-                  dominantBaseline: 'middle',
-                }}
-              />
             </Pie>
-            <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
-            <Legend />
+            <Tooltip />
+            <text
+              x="50%"
+              y="50%"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                fill: 'currentColor',
+              }}
+            >
+              {`$${(totalAmount / 1000).toFixed(1)}K`}
+            </text>
+            <text
+              x="50%"
+              y="58%"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              style={{
+                fontSize: '14px',
+                fill: 'currentColor',
+              }}
+            >
+              Total Amount
+            </text>
           </PieChart>
-        );
-      default:
+        )
+      case 'area':
         return (
-          <AreaChart {...CommonProps}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
+          <AreaChart data={data}>
+            <XAxis dataKey="attributes.createdAt" />
             <YAxis />
-            <Tooltip
-              formatter={(value) => [`$${value.toFixed(2)}`, 'Amount']}
-              labelFormatter={(label) => `Date: ${label}`}
-            />
+            <Tooltip />
             <Legend />
-            <Area type="monotone" dataKey="amount" name="Transaction Amount" stroke="#8884d8" fill="#8884d8" />
+            <Area type="monotone" dataKey="attributes.amount.value" stroke="#8884d8" fill="#8884d8" />
           </AreaChart>
         )
+      case 'line':
+        return (
+          <LineChart data={data}>
+            <XAxis dataKey="attributes.createdAt" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Line type="monotone" dataKey="attributes.amount.value" stroke="#8884d8" />
+          </LineChart>
+        )
+      default:
+        return null
     }
   }
 
   return (
-    <Card className="mt-8">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle>Transaction History</CardTitle>
-        <Select value={chartType} onValueChange={(value: ChartType) => setChartType(value)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select chart type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="line">Line Chart</SelectItem>
-            <SelectItem value="bar">Bar Chart</SelectItem>
-            <SelectItem value="area">Area Chart</SelectItem>
-            <SelectItem value="donut">Donut Chart</SelectItem>
-          </SelectContent>
-        </Select>
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
         {loading && <div>Loading...</div>}
         {error && <div className="text-red-500">{error}</div>}
-        <div className="text-xl font-semibold">
-          Total Withdrawals: ${totalWithdrawals.toFixed(2)}
+        <div style={{ width: '100%', height: '300px' }}>
+          <ResponsiveContainer>
+            {renderChart()}
+          </ResponsiveContainer>
         </div>
-        <div className="text-xl font-semibold">
-          Total Deposits: ${totalDeposits.toFixed(2)}
+        <div className="mt-2">
+          <div>Total Withdrawals: ${totalWithdrawals.toFixed(2)}</div>
+          <div>Total Deposits: ${totalDeposits.toFixed(2)}</div>
         </div>
-        <ResponsiveContainer width="100%" height={400}>
-          {renderChart()}
-        </ResponsiveContainer>
       </CardContent>
     </Card>
   )
